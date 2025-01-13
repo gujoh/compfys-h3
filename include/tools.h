@@ -1,5 +1,6 @@
 #pragma once
 #include <stdio.h>
+#include <stdbool.h>
 /* **********************************************
  *
  * Add v1 and v2 elementwise
