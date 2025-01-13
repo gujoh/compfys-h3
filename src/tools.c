@@ -6,38 +6,49 @@
 #include <complex.h>
 #include <string.h>
 #include "tools.h"
+#include <stdbool.h>
 
-double* linspace(double start, double end, int num) {
-    
-    if (num <= 0) return NULL;
+double* 
+linspace(
+    double start, 
+    double end, 
+    int num, 
+    bool inclusive) 
+{
+
+    if (num <= 0) return NULL; 
+
+    if (!inclusive) {
+        if (num == 1) return NULL; 
+        start += (end - start) / (num + 1); 
+        end -= (end - start) / (num + 1);
+    }
+
     double* result = (double*)malloc(num * sizeof(double));
-    if (!result) return NULL;
+    if (!result) return NULL; 
 
     if (num == 1) {
-        result[0] = start;
+        result[0] = start; 
         return result;
     }
 
-    double step = (end - start) / (num - 1); 
+    double step = (end - start) / (num - (inclusive ? 1 : 0)); 
 
     for (int i = 0; i < num; i++) {
         result[i] = start + i * step; 
     }
-
-    return result;
 }
 
 void
 elementwise_addition(
-                     double *res,
-                     double *v1,
-                     double *v2,
-                     unsigned int len
-                    )
+    double *res,
+    double *v1,
+    double *v2,
+    unsigned int len)
 {
     for (size_t idx = 0; idx < len; idx++)
     {
-        res[idx] = v1[idx] + v2[idx];
+    res[idx] = v1[idx] + v2[idx];
     }
 }
 

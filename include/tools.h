@@ -8,11 +8,13 @@
  *
  * **********************************************/
 
-double* linspace(
-                double start, 
-                double end, 
-                int num
-                );
+double* 
+linspace(
+        double start, 
+        double end, 
+        int num, 
+        bool inclusive
+        );
 
 void
 elementwise_addition(
