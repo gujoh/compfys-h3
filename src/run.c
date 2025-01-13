@@ -9,12 +9,13 @@
 #include <stdbool.h>
 
 typedef struct {
-    float energy; 
+    double* walkers; 
+    int n;
 } result_dmc;
 
 typedef struct {
-    double* new_walkers;
-    int new_n;
+    double* walkers;
+    int n;
 } result_dmc_one_step;
 
 void task1(void);
@@ -42,34 +43,38 @@ void task1(void){
     double E_t = 0.5;
     double delta_tau = 0.02;
     double gamma = 0.5;
-    diffusion_monte_carlo(walkers, n, E_t, gamma, delta_tau);
+    result_dmc result = diffusion_monte_carlo(walkers, n, E_t, gamma, delta_tau);
 
-    free(walkers);
-
+    free(result.walkers);
 }
 
 result_dmc diffusion_monte_carlo(double* walkers, int n0, double E_t, double gamma, double dt)
 {
     gsl_rng* r = get_rand();
     int n = n0;
-    for (int i = 0; i < 10000; i++)
+    FILE* file = fopen("data/task1.csv", "w+");
+
+    for (int i = 0; i < 5000; i++)
     {
         result_dmc_one_step result_one_step = diffusion_monte_carlo_one_step(walkers, n, E_t, dt, r);
-        n = result_one_step.new_n;
-        //walkers = (double*) realloc(walkers, sizeof(double) * n);
-        //memcpy(walkers, result_one_step.new_walkers, sizeof(double) * n);
-        walkers = result_one_step.new_walkers;
+        n = result_one_step.n;
+        walkers = (double*) realloc(walkers, sizeof(double) * n);
+        memcpy(walkers, result_one_step.walkers, sizeof(double) * n);
+
         E_t = update_E_t(E_t, gamma, n, n0);
-        printf("%d, %lf\n", n, E_t);
+        //printf("%d, %lf\n", n, E_t);
+        fprintf(file, "%d\n", n);
     }
+    fclose(file);
     result_dmc result;
-    result.energy = 0.;
+    result.walkers = walkers;
+    result.n = n;
     return result;
 }
 
 result_dmc_one_step diffusion_monte_carlo_one_step(double* walkers, int n, double E_t, double dt, gsl_rng* r)
 {
-    int walker_multiplier[n];
+    int* walker_multiplier = (int*) malloc(sizeof(int) * n);
     int n_multiplier = 0; // Total number of new walkers.
     for (int i = 0; i < n; i++)
     { // Displaces walkers, and counts how many we should create. 
@@ -78,19 +83,26 @@ result_dmc_one_step diffusion_monte_carlo_one_step(double* walkers, int n, doubl
         int m = (int) (w + gsl_rng_uniform(r));
         walker_multiplier[i] = m;
         n_multiplier += m;
-        //printf("%d, %lf\n", m, w);
+       // printf("%d, %lf, %lf\n", m, w, E_t);
     }
     double new_walkers[n_multiplier];
+    int k = 0;
     for (int i = 0; i < n; i++)
     { // Creates new walkers.
+        bool inner_executed = false;
         for (int j = 0; j < walker_multiplier[i]; j++)
+        { // The k variable is used so we do not skip places in the array.
+            new_walkers[k + j] = walkers[i];
+            inner_executed = true;
+        }
+        if (inner_executed)
         {
-            new_walkers[i + j] = walkers[i];
+            k++;
         }
     }
     result_dmc_one_step result;
-    result.new_walkers = new_walkers;
-    result.new_n = n_multiplier;
+    result.walkers = new_walkers;
+    result.n = n_multiplier;
     return result;
 }
 
