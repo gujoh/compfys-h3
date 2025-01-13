@@ -62,7 +62,6 @@ result_dmc diffusion_monte_carlo(double* walkers, int n0, double E_t, double gam
         memcpy(walkers, result_one_step.walkers, sizeof(double) * n);
 
         E_t = update_E_t(E_t, gamma, n, n0);
-        //printf("%d, %lf\n", n, E_t);
         fprintf(file, "%d\n", n);
     }
     fclose(file);
@@ -83,7 +82,6 @@ result_dmc_one_step diffusion_monte_carlo_one_step(double* walkers, int n, doubl
         int m = (int) (w + gsl_rng_uniform(r));
         walker_multiplier[i] = m;
         n_multiplier += m;
-       // printf("%d, %lf, %lf\n", m, w, E_t);
     }
     double new_walkers[n_multiplier];
     int k = 0;
