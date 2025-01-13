@@ -2,13 +2,28 @@
 #include <math.h>
 #include <stdlib.h>
 #include <gsl/gsl_rng.h>
+#include <gsl/gsl_randist.h>
 #include <string.h>
 #include <time.h>
 #include "tools.h"
 #include <stdbool.h>
 
-void task1();
+typedef struct {
+    float energy; 
+} result_dmc;
+
+typedef struct {
+    double* new_walkers;
+    int new_n;
+} result_dmc_one_step;
+
+void task1(void);
 gsl_rng* get_rand(void);
+result_dmc diffusion_monte_carlo(double* walkers, int n0, double E_t, double gamma, double dt);
+result_dmc_one_step diffusion_monte_carlo_one_step(double* walkers, int n, double E_t, double dt, gsl_rng* r);
+double displace_x(double x, double delta_tau, gsl_rng* r);
+double weight(double x, double E_t, double dt);
+double update_E_t(double E_t, double gamma, int n, int n0);
 
 int
 run(
@@ -20,23 +35,85 @@ run(
     return 0;
 }
 
-void task1(){
+void task1(void){
 
-    double* walkers = linspace(-5, 5, 200, false);
+    int n = 200;
+    double* walkers = linspace(-5, 5, n, false);
     double E_t = 0.5;
     double delta_tau = 0.02;
-    gsl_rng* r = get_rand();
-
-
+    double gamma = 0.5;
+    diffusion_monte_carlo(walkers, n, E_t, gamma, delta_tau);
 
     free(walkers);
 
 }
 
-float displace_x(float x, float delta_tau, gsl_rng* r)
+result_dmc diffusion_monte_carlo(double* walkers, int n0, double E_t, double gamma, double dt)
 {
-    float G = gsl_ran_gaussian(r, 1);
-    return x + sqrt(delta_tau)*G;
+    gsl_rng* r = get_rand();
+    int n = n0;
+    for (int i = 0; i < 10000; i++)
+    {
+        result_dmc_one_step result_one_step = diffusion_monte_carlo_one_step(walkers, n, E_t, dt, r);
+        n = result_one_step.new_n;
+        //walkers = (double*) realloc(walkers, sizeof(double) * n);
+        //memcpy(walkers, result_one_step.new_walkers, sizeof(double) * n);
+        walkers = result_one_step.new_walkers;
+        E_t = update_E_t(E_t, gamma, n, n0);
+        printf("%d, %lf\n", n, E_t);
+    }
+    result_dmc result;
+    result.energy = 0.;
+    return result;
+}
+
+result_dmc_one_step diffusion_monte_carlo_one_step(double* walkers, int n, double E_t, double dt, gsl_rng* r)
+{
+    int walker_multiplier[n];
+    int n_multiplier = 0; // Total number of new walkers.
+    for (int i = 0; i < n; i++)
+    { // Displaces walkers, and counts how many we should create. 
+        walkers[i] = displace_x(walkers[i], dt, r);
+        double w = weight(walkers[i], E_t, dt);
+        int m = (int) (w + gsl_rng_uniform(r));
+        walker_multiplier[i] = m;
+        n_multiplier += m;
+        //printf("%d, %lf\n", m, w);
+    }
+    double new_walkers[n_multiplier];
+    for (int i = 0; i < n; i++)
+    { // Creates new walkers.
+        for (int j = 0; j < walker_multiplier[i]; j++)
+        {
+            new_walkers[i + j] = walkers[i];
+        }
+    }
+    result_dmc_one_step result;
+    result.new_walkers = new_walkers;
+    result.new_n = n_multiplier;
+    return result;
+}
+
+double displace_x(double x, double delta_tau, gsl_rng* r)
+{
+    double G = gsl_ran_gaussian(r, 1);
+    return x + sqrt(delta_tau) * G;
+}
+
+double potential_1d(double x)
+{
+    double y = 1 - exp(- x);
+    return (1 / 2) * y * y;
+}
+
+double weight(double x, double E_t, double dt)
+{
+    return exp(- (potential_1d(x) - E_t) * dt);
+} 
+
+double update_E_t(double E_t, double gamma, int n, int n0)
+{
+    return E_t - gamma * log((double) n / n0);
 }
 
 gsl_rng* get_rand(void){
