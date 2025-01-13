@@ -7,6 +7,13 @@
  * The length of the arrays should be len
  *
  * **********************************************/
+
+double* linspace(
+                double start, 
+                double end, 
+                int num
+                );
+
 void
 elementwise_addition(
                      double *res,

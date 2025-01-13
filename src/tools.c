@@ -7,6 +7,26 @@
 #include <string.h>
 #include "tools.h"
 
+double* linspace(double start, double end, int num) {
+    
+    if (num <= 0) return NULL;
+    double* result = (double*)malloc(num * sizeof(double));
+    if (!result) return NULL;
+
+    if (num == 1) {
+        result[0] = start;
+        return result;
+    }
+
+    double step = (end - start) / (num - 1); 
+
+    for (int i = 0; i < num; i++) {
+        result[i] = start + i * step; 
+    }
+
+    return result;
+}
+
 void
 elementwise_addition(
                      double *res,
