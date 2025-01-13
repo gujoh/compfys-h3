@@ -1,7 +1,13 @@
 #include <stdio.h>
 #include <math.h>
 #include <stdlib.h>
+#include <gsl/gsl_rng.h>
+#include <string.h>
+#include <time.h>
+#include "tools.h"
+#include <stdbool.h>
 
+void task1();
 
 int
 run(
@@ -9,8 +15,20 @@ run(
     char *argv[]
    )
 {
-    // Write your code here
-    // This makes it possible to test
-    // 100% of you code
+    task1();
     return 0;
 }
+
+void task1(){
+
+    double* walkers = linspace(-5, 5, 200, false);
+    double E_t = 0.5;
+    double delta_tau = 0.02;
+
+
+
+    free(walkers);
+
+}
+
+
