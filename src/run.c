@@ -43,7 +43,7 @@ void task1(void){
     double E_t = 0.5;
     double delta_tau = 0.02;
     double gamma = 0.5;
-    int t = 50000;
+    int t = 10000;
     int t_eq = 0;
     result_dmc result = diffusion_monte_carlo(walkers, n, E_t, gamma, delta_tau, t, t_eq);
 
@@ -55,23 +55,34 @@ result_dmc diffusion_monte_carlo(double* walkers, int n0, double E_t, double gam
     gsl_rng* r = get_rand();
     int n = n0;
     FILE* file = fopen("data/task1.csv", "w+");
+    FILE* positions = fopen("data/positions_task1.csv", "w+");
     double E_t_sum = 0;
 
     for (int i = 0; i < t; i++)
     {
         result_dmc_one_step result_one_step = diffusion_monte_carlo_one_step(walkers, n, E_t, dt, r);
         n = result_one_step.n;
-        free(walkers);
-        walkers = (double*) malloc(sizeof(double) * n);
+        //free(walkers);
+        //walkers = (double*) malloc(sizeof(double) * n);
+        walkers = (double*) realloc(walkers, sizeof(double) * n);
         memcpy(walkers, result_one_step.walkers, sizeof(double) * n);
+        //free(result_one_step.walkers);
         if (i >= t_eq)
-        {
+        { // Updating E_t
             E_t_sum += E_t;
             E_t = update_E_t(E_t_sum / (i - t_eq + 1), gamma, n, n0);
         }
+
+        //Writing to file 
+        for (int j = 0; j < n; j++)
+        {
+            fprintf(positions, "%lf\n", walkers[j]);
+        }
+        //fprintf(positions, "\n");
         fprintf(file, "%d, %lf\n", n, E_t);
     }
     fclose(file);
+    fclose(positions);
     result_dmc result;
     result.walkers = walkers;
     result.n = n;
@@ -90,14 +101,13 @@ result_dmc_one_step diffusion_monte_carlo_one_step(double* walkers, int n, doubl
         walker_multiplier[i] = m;
         n_multiplier += m;
     }
-    double new_walkers[n_multiplier];
+    double* new_walkers = (double*) malloc(sizeof(double) * n_multiplier);
     int k = 0;
     for (int i = 0; i < n; i++)
     { // Creates new walkers.
         bool inner_executed = false;
         for (int j = 0; j < walker_multiplier[i]; j++)
         { // The k variable is used so we do not skip places in the array.
-            //printf("%d, %lf\n", k + j, walkers[i]);
             new_walkers[k + j] = walkers[i];
             inner_executed = true;
         }
