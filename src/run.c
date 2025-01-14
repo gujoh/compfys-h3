@@ -62,11 +62,9 @@ result_dmc diffusion_monte_carlo(double* walkers, int n0, double E_t, double gam
     {
         result_dmc_one_step result_one_step = diffusion_monte_carlo_one_step(walkers, n, E_t, dt, r);
         n = result_one_step.n;
-        //free(walkers);
-        //walkers = (double*) malloc(sizeof(double) * n);
         walkers = (double*) realloc(walkers, sizeof(double) * n);
         memcpy(walkers, result_one_step.walkers, sizeof(double) * n);
-        //free(result_one_step.walkers);
+        free(result_one_step.walkers);
         if (i >= t_eq)
         { // Updating E_t
             E_t_sum += E_t;
@@ -76,7 +74,7 @@ result_dmc diffusion_monte_carlo(double* walkers, int n0, double E_t, double gam
         //Writing to file 
         for (int j = 0; j < n; j++)
         {
-            fprintf(positions, "%lf\n", walkers[j]);
+            fprintf(positions, "%.10lf\n", walkers[j]);
         }
         //fprintf(positions, "\n");
         fprintf(file, "%d, %lf\n", n, E_t);
@@ -117,7 +115,9 @@ result_dmc_one_step diffusion_monte_carlo_one_step(double* walkers, int n, doubl
         }
     }
     result_dmc_one_step result;
-    result.walkers = new_walkers;
+    result.walkers = (double*) malloc(sizeof(double) * n_multiplier);
+    memcpy(result.walkers, new_walkers, sizeof(double) * n_multiplier);
+    free(new_walkers);
     result.n = n_multiplier;
     return result;
 }
