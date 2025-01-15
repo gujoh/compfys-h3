@@ -25,6 +25,7 @@ result_dmc_one_step diffusion_monte_carlo_one_step(double* walkers, int n, doubl
 double displace_x(double x, double delta_tau, gsl_rng* r);
 double weight(double x, double E_t, double dt);
 double update_E_t(double E_t, double gamma, int n, int n0);
+result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter);
 
 int
 run(
@@ -43,8 +44,8 @@ void task1(void){
     double E_t = 0.5;
     double delta_tau = 0.02;
     double gamma = 0.5;
-    double n_iter
-    diffusion_monte_carlo(walkers, n, E_t, gamma, delta_tau, n_iter);
+    double n_iter = 5000;
+    diffusion_monte_carlo_1d(walkers, n, E_t, gamma, delta_tau, n_iter);
 }
 
 
