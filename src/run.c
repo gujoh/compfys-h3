@@ -40,7 +40,7 @@ run(
 {
     task1();
     //task2();
-    // task3();
+    //task3();
     return 0;
 }
 
@@ -82,35 +82,6 @@ void task3(void)
     diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 1);
 }
 
-int diffuse_and_multiply_1d(double* walkers, int* walker_multiplier)
-{
-    int multiplier_sum = 0; 
-
-    for (int i = 0; i < n; i++)
-    {
-        walkers[i] = displace_x(walkers[i], dt, r);
-        double w = weight_1d(walkers[i], E_t, dt);
-        int m = (int) (w + gsl_rng_uniform(r));
-        walker_multiplier[i] = m;
-        multiplier_sum += m;
-    }
-    return multiplier_sum
-} 
-
-void populate_new_walkers(double* new_walkers, double* walkers, int* walker_multiplier)
-{
-    int l = 0;    
-        
-    for (int i = 0; i < n; i++)
-    { // For every previous walker
-        for (int k = 0; k < walker_multiplier[i]; k++)
-        { // For every walker child    
-            new_walkers[l] = walkers[i];
-            l++;
-        }
-    }
-}
-
 void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq)
 {
     gsl_rng* r = get_rand();
@@ -131,30 +102,28 @@ void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma,
         fprintf(file, "%d, %lf\n", n, E_t);
 
         walker_multiplier = (int*) malloc(sizeof(int) * n);
-        int multiplier_sum = diffuse_and_multiply_1d(walkers, walker_multiplier); 
+        int multiplier_sum = 0; 
 
-        // for (int j = 0; j < n; j++)
-        // {
-        //     walkers[j] = displace_x(walkers[j], dt, r);
-        //     double w = weight_1d(walkers[j], E_t, dt);
-        //     int m = (int) (w + gsl_rng_uniform(r));
-        //     walker_multiplier[j] = m;
-        //     multiplier_sum += m;
-        // }
+        for (int j = 0; j < n; j++)
+        {
+            walkers[j] = displace_x(walkers[j], dt, r);
+            double w = weight_1d(walkers[j], E_t, dt);
+            int m = (int) (w + gsl_rng_uniform(r));
+            walker_multiplier[j] = m;
+            multiplier_sum += m;
+        }
 
         new_walkers = (double*) malloc(sizeof(double) * multiplier_sum);
-        populate_new_walkers(new_walkers, walkers, walker_multiplier);
-
-        // int l = 0;    
+        int l = 0;    
         
-        // for (int j = 0; j < n; j++)
-        // { // For every previous walker
-        //     for (int k = 0; k < walker_multiplier[j]; k++)
-        //     { // For every walker child    
-        //         new_walkers[l] = walkers[j];
-        //         l++;
-        //     }
-        // }
+        for (int j = 0; j < n; j++)
+        { // For every previous walker
+            for (int k = 0; k < walker_multiplier[j]; k++)
+            { // For every walker child    
+                new_walkers[l] = walkers[j];
+                l++;
+            }
+        }
         free(walker_multiplier);
         free(walkers);
         walkers = (double*) malloc(sizeof(double) * multiplier_sum);
