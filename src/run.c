@@ -21,7 +21,7 @@ typedef struct {
 void task1(void);
 gsl_rng* get_rand(void);
 double displace_x(double x, double delta_tau, gsl_rng* r);
-double weight(double x, double E_t, double dt);
+double weight_1d(double x, double E_t, double dt);
 double update_E_t(double E_t, double gamma, int n, int n0);
 result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
 
@@ -71,7 +71,7 @@ result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double 
         for (int j = 0; j < n; j++)
         {
             walkers[j] = displace_x(walkers[j], dt, r);
-            double w = weight(walkers[j], E_t, dt);
+            double w = weight_1d(walkers[j], E_t, dt);
             int m = (int) (w + gsl_rng_uniform(r));
             walker_multiplier[j] = m;
             multiplier_sum += m;
@@ -125,7 +125,7 @@ double potential_1d(double x)
     return 0.5 * y * y;
 }
 
-double weight(double x, double E_t, double dt)
+double weight_1d(double x, double E_t, double dt)
 {
     return exp(- (potential_1d(x) - E_t) * dt);
 } 
