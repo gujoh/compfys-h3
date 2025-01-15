@@ -249,30 +249,6 @@ double** polar_to_cart(double** polar, int n)
     return rect;
 }
 
-// double** rect_to_polar(double** polar, int n)
-// {
-//     int dim = 6;
-//     double** polar = create_2D_array(dim, n);
-    
-//     for(int i = 0; i < n; i++)
-//     {
-//         polar[0][i] = sqrt(rect[0][i]*rect[0][i] + rect[1][i]*rect[1][i] + rect[2][i]*rect[2][i]);
-
-
-//         polar[3][i] = sqrt(rect[3][i]*rect[3][i] + rect[4][i]*rect[4][i] + rect[5][i]*rect[5][i]);
-//     }
-// }
-// def rect_to_polar(x, y, z):
-		
-// 	magnitude = np.sqrt(x**2 + y**2 + z**2)  
-// 	magnitude_phi = np.sqrt(x**2 + y**2)
-
-// 	phi = np.arctan2(z, magnitude_phi)         
-
-// 	theta = np.arctan2(y, x)
-
-// 	return magnitude, phi, theta
-
 double displace_x(double x, double delta_tau, gsl_rng* r)
 {
     double G = gsl_ran_gaussian(r, 1);
