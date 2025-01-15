@@ -20,7 +20,7 @@ linspace(
 
     if (!inclusive) {
         if (num == 1) return NULL; 
-        start += (end - start) / (num + 1); 
+        start += (end - start) / (num + 1);     
         end -= (end - start) / (num + 1);
     }
 
@@ -37,6 +37,7 @@ linspace(
     for (int i = 0; i < num; i++) {
         result[i] = start + i * step; 
     }
+    return result;
 }
 
 void
