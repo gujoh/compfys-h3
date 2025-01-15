@@ -34,7 +34,7 @@ run(
     char *argv[]
    )
 {
-    //task1();
+    task1();
     task2();
     return 0;
 }

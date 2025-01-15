@@ -12,3 +12,4 @@ makefile
 .vscode 
 Figures
 .DS_Store
+/data
