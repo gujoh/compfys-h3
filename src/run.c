@@ -302,7 +302,7 @@ void drift1(double* walker, double alpha, double dt)
     }
     for (int i = 3; i < 6; i++)
     {
-        walker[i] += (- 2 * r2_norm[i] + r12_norm[i] / (2 * pow(1 + alpha * r12_len, 2))) * dt;
+        walker[i] += (- 2 * r2_norm[i-3] + r12_norm[i-3] / (2 * pow(1 + alpha * r12_len, 2))) * dt;
     }
 }
 
