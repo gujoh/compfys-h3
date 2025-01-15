@@ -144,6 +144,48 @@ result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double
     free(walkers);
 }
 
+double** polar_to_rect(double** polar, int n)
+{
+    int dim = 6;
+    double** rect = create_2D_array(dim, n);
+
+    for(int i = 0; i < n; i++)
+    {
+        rect[0][i] = polar[0][i] * sin(polar[1][i]) * cos(polar[2][i]);
+        rect[1][i] = polar[0][i] * sin(polar[1][i]) * sin(polar[2][i]);
+        rect[2][i] = polar[0][i] * cos(polar[1][i]);
+        rect[3][i] = polar[3][i] * sin(polar[4][i]) * cos(polar[5][i]);
+        rect[4][i] = polar[3][i] * sin(polar[4][i]) * sin(polar[5][i]);
+        rect[5][i] = polar[3][i] * cos(polar[4][i]);
+    }
+
+    return rect;
+}
+
+// double** rect_to_polar(double** polar, int n)
+// {
+//     int dim = 6;
+//     double** polar = create_2D_array(dim, n);
+    
+//     for(int i = 0; i < n; i++)
+//     {
+//         polar[0][i] = sqrt(rect[0][i]*rect[0][i] + rect[1][i]*rect[1][i] + rect[2][i]*rect[2][i]);
+
+
+//         polar[3][i] = sqrt(rect[3][i]*rect[3][i] + rect[4][i]*rect[4][i] + rect[5][i]*rect[5][i]);
+//     }
+// }
+// def rect_to_polar(x, y, z):
+		
+// 	magnitude = np.sqrt(x**2 + y**2 + z**2)  
+// 	magnitude_phi = np.sqrt(x**2 + y**2)
+
+// 	phi = np.arctan2(z, magnitude_phi)         
+
+// 	theta = np.arctan2(y, x)
+
+// 	return magnitude, phi, theta
+
 double displace_x(double x, double delta_tau, gsl_rng* r)
 {
     double G = gsl_ran_gaussian(r, 1);
