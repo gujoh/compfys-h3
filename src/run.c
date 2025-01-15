@@ -61,8 +61,8 @@ void task2(void)
     double E_t = - 3;
     double delta_tau = 0.01;
     double gamma = 0.5;
-    int n_iter = 1000000;
-    int n_eq = 100;
+    int n_iter = 500000;
+    int n_eq = 1500;
     result_dmc result = diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq);
 }
 
@@ -280,21 +280,32 @@ double weight_6d(double* walker, double E_t, double alpha, double dt)
     double r1[] = {walker[0], walker[1], walker[2]};
     double r2[] = {walker[3], walker[4], walker[5]};
     double r12_len = distance_between_vectors(r1, r2, 3);
-    double r_norm_diff[] = {0, 0, 0};
-    double r_diff[] = {0, 0, 0};
-    double r1_norm[3]; 
-    double r2_norm[3];
-    memcpy(r1_norm, r1, sizeof(r1_norm)); 
-    memcpy(r2_norm, r2, sizeof(r2_norm)); 
-    double denominator = 1 + alpha * r12_len;
-    normalize_vector(r1_norm, 3);
-    normalize_vector(r2_norm, 3);
-    elementwise_subtraction(r_norm_diff, r1_norm, r2_norm, 3);
-    elementwise_subtraction(r_diff, r1, r2, 3);
-    double E_l = - 4 + (dot_product(r_norm_diff, r_diff, 3)) / (r12_len * pow(denominator, 2)) -
-        1 / (r12_len * pow(denominator, 3)) - 1 / (4 * pow(denominator, 4)) + 1 / r12_len;
-    return exp(- (E_l - E_t) * dt);
+    double r1_len = vector_norm(r1, 3);
+    double r2_len = vector_norm(r2, 3);
+    double v = - 2 / sqrt(pow(r1_len, 2) + 1e-4) - 2 / sqrt(pow(r2_len, 2) + 1e-4)
+        + 1 / sqrt(pow(r12_len, 2) + 1e-4);
+    return exp(- (v - E_t) * dt);
 } 
+
+// double E_l(double* walker, double E_t, double alpha, double dt)
+// {
+//        double r1[] = {walker[0], walker[1], walker[2]};
+//     double r2[] = {walker[3], walker[4], walker[5]};
+//     double r12_len = distance_between_vectors(r1, r2, 3);
+//     double r_norm_diff[] = {0, 0, 0};
+//     double r_diff[] = {0, 0, 0};
+//     double r1_norm[3]; 
+//     double r2_norm[3];
+//     memcpy(r1_norm, r1, sizeof(r1_norm)); 
+//     memcpy(r2_norm, r2, sizeof(r2_norm)); 
+//     double denominator = 1 + alpha * r12_len;
+//     normalize_vector(r1_norm, 3);
+//     normalize_vector(r2_norm, 3);
+//     elementwise_subtraction(r_norm_diff, r1_norm, r2_norm, 3);
+//     elementwise_subtraction(r_diff, r1, r2, 3);
+//     double E_l = - 4 + (dot_product(r_norm_diff, r_diff, 3)) / (r12_len * pow(denominator, 2)) -
+//         1 / (r12_len * pow(denominator, 3)) - 1 / (4 * pow(denominator, 4)) + 1 / r12_len;
+// }
 
 double update_E_t(double E_t, double gamma, int n, int n0)
 {
