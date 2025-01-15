@@ -20,11 +20,13 @@ typedef struct {
 
 void task1(void);
 void task2(void);
+void task3(void);
 gsl_rng* get_rand(void);
 double displace_x(double x, double delta_tau, gsl_rng* r);
 double weight_1d(double x, double E_t, double dt);
-double weight_6d(double* walker, double E_t, double alpha, double dt);
+double weight_6d(double* walker, double E_t, double dt);
 double update_E_t(double E_t, double gamma, int n, int n0);
+double wave(double* r1, double* r2, double alpha);
 result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
 result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
 double** init_walkers_6d(int n);
@@ -54,6 +56,19 @@ void task1(void)
 }
 
 void task2(void)
+{
+    int n = 1000;
+    double** walkers = init_walkers_6d(n);
+    double** walkers_cartesian = polar_to_cart(walkers, n);
+    double E_t = - 3;
+    double delta_tau = 0.01;
+    double gamma = 0.5;
+    int n_iter = 500000;
+    int n_eq = 1500;
+    result_dmc result = diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq);
+}
+
+void task3(void)
 {
     int n = 1000;
     double** walkers = init_walkers_6d(n);
@@ -165,7 +180,7 @@ result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double
             {
                 walkers[j][k] = displace_x(walkers[j][k], dt, r);
             }
-            double w = weight_6d(walkers[j], E_t, 0.15, dt);
+            double w = weight_6d(walkers[j], E_t, dt);
             int m = (int) (w  + gsl_rng_uniform(r));
             //printf("%lf\n", w / dim);
             walker_multiplier[j] = m;
@@ -275,7 +290,7 @@ double weight_1d(double x, double E_t, double dt)
     return exp(- (potential_1d(x) - E_t) * dt);
 } 
 
-double weight_6d(double* walker, double E_t, double alpha, double dt)
+double weight_6d(double* walker, double E_t, double dt)
 {
     double r1[] = {walker[0], walker[1], walker[2]};
     double r2[] = {walker[3], walker[4], walker[5]};
@@ -286,6 +301,15 @@ double weight_6d(double* walker, double E_t, double alpha, double dt)
         + 1 / sqrt(pow(r12_len, 2) + 1e-4);
     return exp(- (v - E_t) * dt);
 } 
+
+double wave(double* r1, double* r2, double alpha)
+{   
+    double r1_len = vector_norm(r1, 3);
+    double r2_len = vector_norm(r2, 3);
+    double r12_len = distance_between_vectors(r1, r2, 3);
+    return exp(- 2 * r1_len) * exp(- 2 * r2_len) * 
+        exp(r12_len / (2 + 2 * alpha * r12_len));
+}
 
 // double E_l(double* walker, double E_t, double alpha, double dt)
 // {
