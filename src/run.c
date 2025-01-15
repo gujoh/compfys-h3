@@ -23,7 +23,7 @@ void task2(void);
 gsl_rng* get_rand(void);
 double displace_x(double x, double delta_tau, gsl_rng* r);
 double weight_1d(double x, double E_t, double dt);
-double weight_6d(double r1, double r2, double E_t, double dt);
+double weight_6d(double* walker, double E_t, double alpha, double dt);
 double update_E_t(double E_t, double gamma, int n, int n0);
 result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
 result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
@@ -61,8 +61,8 @@ void task2(void)
     double E_t = - 3;
     double delta_tau = 0.01;
     double gamma = 0.5;
-    int n_iter = 20000;
-    int n_eq = 1500;
+    int n_iter = 1000000;
+    int n_eq = 100;
     result_dmc result = diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq);
 }
 
@@ -161,42 +161,40 @@ result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double
 
         for (int j = 0; j < n; j++)
         {
-            double w = 0;
             for (int k = 0; k < dim; k++)
             {
-                walkers[k][j] = displace_x(walkers[k][j], dt, r);
-                w += weight_1d(walkers[k][j], E_t, dt);
+                walkers[j][k] = displace_x(walkers[j][k], dt, r);
             }
-            //double w = weight_1d(walkers[0][j] - walkers[3][j], E_t, dt);
-            int m = (int) (w / dim + gsl_rng_uniform(r));
-            printf("%lf\n", w / dim);
+            double w = weight_6d(walkers[j], E_t, 0.15, dt);
+            int m = (int) (w  + gsl_rng_uniform(r));
+            //printf("%lf\n", w / dim);
             walker_multiplier[j] = m;
             multiplier_sum += m;
         }
-        new_walkers = create_2D_array(dim, multiplier_sum);
+
+        new_walkers = create_2D_array(multiplier_sum, dim);
         int l = 0;    
-        
+
         for (int j = 0; j < n; j++)
         { //For every previous walker
             for (int k = 0; k < walker_multiplier[j]; k++)
             { //For every walker child    
                 for (int m = 0; m < dim; m++)
                 {
-                    new_walkers[m][l] = walkers[m][j];
+                    new_walkers[l][m] = walkers[j][m];
                 }
                 l++;
             }
         }
-
         free(walker_multiplier);
         destroy_2D_array(walkers);
-        walkers = create_2D_array(dim, multiplier_sum);
+        walkers = create_2D_array(multiplier_sum, dim);
         
-        for(int j = 0; j < multiplier_sum; ++j)
+        for(int j = 0; j < multiplier_sum; j++)
         {
             for (int k = 0; k < dim; k++)
             {
-                walkers[k][j] = new_walkers[k][j];
+                walkers[j][k] = new_walkers[j][k];
             }
         }
 
@@ -222,16 +220,16 @@ result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double
 double** polar_to_cart(double** polar, int n)
 {
     int dim = 6;
-    double** rect = create_2D_array(dim, n);
+    double** rect = create_2D_array(n, dim);
 
     for(int i = 0; i < n; i++)
     {
-        rect[0][i] = polar[0][i] * sin(polar[1][i]) * cos(polar[2][i]);
-        rect[1][i] = polar[0][i] * sin(polar[1][i]) * sin(polar[2][i]);
-        rect[2][i] = polar[0][i] * cos(polar[1][i]);
-        rect[3][i] = polar[3][i] * sin(polar[4][i]) * cos(polar[5][i]);
-        rect[4][i] = polar[3][i] * sin(polar[4][i]) * sin(polar[5][i]);
-        rect[5][i] = polar[3][i] * cos(polar[4][i]);
+        rect[i][0] = polar[i][0] * sin(polar[i][1]) * cos(polar[i][2]);
+        rect[i][1] = polar[i][0] * sin(polar[i][1]) * sin(polar[i][2]);
+        rect[i][2] = polar[i][0] * cos(polar[i][1]);
+        rect[i][3] = polar[i][3] * sin(polar[i][4]) * cos(polar[i][5]);
+        rect[i][4] = polar[i][3] * sin(polar[i][4]) * sin(polar[i][5]);
+        rect[i][5] = polar[i][3] * cos(polar[i][4]);
     }
     return rect;
 }
@@ -277,9 +275,25 @@ double weight_1d(double x, double E_t, double dt)
     return exp(- (potential_1d(x) - E_t) * dt);
 } 
 
-double weight_6d(double r1, double r2, double E_t, double dt)
+double weight_6d(double* walker, double E_t, double alpha, double dt)
 {
-    return exp(- (potential_1d(r1 - r2) - E_t) * dt);
+    double r1[] = {walker[0], walker[1], walker[2]};
+    double r2[] = {walker[3], walker[4], walker[5]};
+    double r12_len = distance_between_vectors(r1, r2, 3);
+    double r_norm_diff[] = {0, 0, 0};
+    double r_diff[] = {0, 0, 0};
+    double r1_norm[3]; 
+    double r2_norm[3];
+    memcpy(r1_norm, r1, sizeof(r1_norm)); 
+    memcpy(r2_norm, r2, sizeof(r2_norm)); 
+    double denominator = 1 + alpha * r12_len;
+    normalize_vector(r1_norm, 3);
+    normalize_vector(r2_norm, 3);
+    elementwise_subtraction(r_norm_diff, r1_norm, r2_norm, 3);
+    elementwise_subtraction(r_diff, r1, r2, 3);
+    double E_l = - 4 + (dot_product(r_norm_diff, r_diff, 3)) / (r12_len * pow(denominator, 2)) -
+        1 / (r12_len * pow(denominator, 3)) - 1 / (4 * pow(denominator, 4)) + 1 / r12_len;
+    return exp(- (E_l - E_t) * dt);
 } 
 
 double update_E_t(double E_t, double gamma, int n, int n0)
@@ -291,15 +305,15 @@ double** init_walkers_6d(int n)
 {
     gsl_rng* r = get_rand();
     int dim = 6;
-    double** walkers = create_2D_array(dim, n);
+    double** walkers = create_2D_array(n, dim);
     for (int i = 0; i < n; i++)
     {
-        walkers[0][i] = 0.7 + gsl_rng_uniform(r);
-        walkers[1][i] = acos(2 * gsl_rng_uniform(r) - 1);
-        walkers[2][i] = 2 * M_PI * gsl_rng_uniform(r);
-        walkers[3][i] = 0.7 + gsl_rng_uniform(r);
-        walkers[4][i] = acos(2 * gsl_rng_uniform(r) - 1);
-        walkers[5][i] = 2 * M_PI * gsl_rng_uniform(r);
+        walkers[i][0] = 0.7 + gsl_rng_uniform(r);
+        walkers[i][1] = acos(2 * gsl_rng_uniform(r) - 1);
+        walkers[i][2] = 2 * M_PI * gsl_rng_uniform(r);
+        walkers[i][3] = 0.7 + gsl_rng_uniform(r);
+        walkers[i][4] = acos(2 * gsl_rng_uniform(r) - 1);
+        walkers[i][5] = 2 * M_PI * gsl_rng_uniform(r);
     }
     return walkers;
 }
