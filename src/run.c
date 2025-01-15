@@ -200,32 +200,31 @@ void task1(void){
     double E_t = 0.5;
     double delta_tau = 0.02;
     double gamma = 0.5;
-    double n_iter = 5000;
+    double n_iter = 10000;
     diffusion_monte_carlo_1d(walkers, n, E_t, gamma, delta_tau, n_iter);
 }
-
 
 result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter)
 {
     gsl_rng* r = get_rand();
     int n = n0;
+    double E_t_sum = 0;
     FILE* file = fopen("data/task1.csv", "w+");
     FILE* positions = fopen("data/positions_task1.csv", "w+");
-    double E_t_sum = 0;
 
-    for (int i = 0; i < n_iter; i++){//For every iteration
+    for (int i = 0; i < n_iter; i++)
+    { //For every DMC iteration
         for (int j = 0; j < n; j++)
         {
             fprintf(positions, "%.10lf\n", walkers[j]);
         }
-        //fprintf(positions, "\n");
         fprintf(file, "%d, %lf\n", n, E_t);
 
         int* walker_multiplier = (int*) malloc(sizeof(int) * n);
         int multiplier_sum = 0; 
 
-        for (int j = 0; j < n; j++){//For every walker
-
+        for (int j = 0; j < n; j++)
+        { //For every walker
             walkers[j] = displace_x(walkers[j], dt, r);
             double w = weight(walkers[j], E_t, dt);
             int m = (int) (w + gsl_rng_uniform(r));
@@ -234,30 +233,29 @@ result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double 
         }
 
         double* new_walkers = (double*) malloc(sizeof(double) * multiplier_sum);
-        int k = 0;    
+        int l = 0;    
         
-        for (int j = 0; j < n; j++){//For every previous walker
-
+        for (int j = 0; j < n; j++)
+        { //For every previous walker
             bool inner_executed = false;
-            for (int l = 0; l < walker_multiplier[j]; l++){//For every walker child
-                
-                // The k variable is used so we do not skip places in the array.
+            for (int k = 0; k < walker_multiplier[j]; k++)
+            { //For every walker child    
                 new_walkers[k + l] = walkers[j];
                 inner_executed = true;
             }
-            if (inner_executed){
-                
-                k++;
+            if (inner_executed)
+            {    
+                l++;
             }
         }
         
         free(walker_multiplier);
-        
         free(walkers);
         walkers = (double*) malloc(sizeof(double) * multiplier_sum);
+        //walkers = (double*) realloc(walkers, sizeof(double) * multiplier_sum);
         
-        for(int j = 0; j < multiplier_sum; ++j){
-
+        for(int j = 0; j < multiplier_sum; ++j)
+        {
             walkers[j] = new_walkers[j];
         }
 
@@ -265,8 +263,6 @@ result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double 
         E_t_sum += E_t;
         E_t = update_E_t(E_t_sum / (i + 1), gamma, multiplier_sum, n0);
         n = multiplier_sum;
-
-        
     }
     fclose(file);
     fclose(positions);
@@ -314,7 +310,7 @@ double displace_x(double x, double delta_tau, gsl_rng* r)
 double potential_1d(double x)
 {
     double y = 1 - exp(- x);
-    return (1 / 2) * y * y;
+    return 0.5 * y * y;
 }
 
 double weight(double x, double E_t, double dt)
