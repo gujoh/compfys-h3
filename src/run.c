@@ -34,7 +34,7 @@ run(
     char *argv[]
    )
 {
-    task1();
+    //task1();
     task2();
     return 0;
 }
@@ -47,7 +47,7 @@ void task1(void)
     double delta_tau = 0.02;
     double gamma = 0.5;
     int n_iter = 50000;
-    int n_eq = 10;
+    int n_eq = 1500;
     result_dmc result = diffusion_monte_carlo_1d(walkers, n, E_t, gamma, delta_tau, n_iter, n_eq);
 }
 
@@ -58,8 +58,8 @@ void task2(void)
     double E_t = 0.5;
     double delta_tau = 0.01;
     double gamma = 0.5;
-    int n_iter = 10000;
-    int n_eq = 10;
+    int n_iter = 20000;
+    int n_eq = 1500;
     result_dmc result = diffusion_monte_carlo_6d(walkers, n, E_t, gamma, delta_tau, n_iter, n_eq);
 }
 
@@ -68,13 +68,14 @@ result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double 
     gsl_rng* r = get_rand();
     int n = n0;
     double E_t_sum = 0;
+    int denominator = 0;
     FILE* file = fopen("data/task1.csv", "w+");
     FILE* positions = fopen("data/positions_task1.csv", "w+");
     int* walker_multiplier;
     double* new_walkers;
 
     for (int i = 0; i < n_iter; i++)
-    { //For every DMC iteration
+    { // For every DMC iteration
         for (int j = 0; j < n; j++)
         {
             fprintf(positions, "%lf\n", walkers[j]);
@@ -97,14 +98,13 @@ result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double 
         int l = 0;    
         
         for (int j = 0; j < n; j++)
-        { //For every previous walker
+        { // For every previous walker
             for (int k = 0; k < walker_multiplier[j]; k++)
-            { //For every walker child    
+            { // For every walker child    
                 new_walkers[l] = walkers[j];
                 l++;
             }
         }
-        
         free(walker_multiplier);
         free(walkers);
         walkers = (double*) malloc(sizeof(double) * multiplier_sum);
@@ -116,11 +116,14 @@ result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double 
 
         free(new_walkers);
         n = multiplier_sum;
-        if (i >= n_eq)
+        if (i == n_eq)
         {
-            E_t_sum += E_t;
-            E_t = update_E_t(E_t_sum / (i - n_eq + 1), gamma, n, n0);
+            E_t_sum = 0;
+            denominator = 0;
         }
+        E_t_sum += E_t;
+        denominator++;
+        E_t = update_E_t(E_t_sum / denominator, gamma, n, n0);
     }
     free(walkers);
     fclose(file);
@@ -139,9 +142,77 @@ result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double
     FILE* positions = fopen("data/positions_task2.csv", "w+");
     int* walker_multiplier;
     double** new_walkers;
+    int dim = 6;
+    int denominator = 0;
 
+    for (int i = 0; i < n_iter; i++)
+    { // For every DMC iteration
+        // for (int j = 0; j < n; j++)
+        // {
+        //     fprintf(positions, "%lf\n", walkers[j]);
+        // }
+        fprintf(file, "%d, %lf\n", n, E_t);
 
-    free(walkers);
+        walker_multiplier = (int*) malloc(sizeof(int) * n);
+        int multiplier_sum = 0; 
+
+        for (int j = 0; j < n; j++)
+        {
+            double w = 0;
+            for (int k = 0; k < dim; k++)
+            {
+                walkers[k][j] = displace_x(walkers[k][j], dt, r);
+                w +=  weight_1d(walkers[k][j], E_t, dt);
+            }
+            //double w = weight_1d(walkers[j], E_t, dt);
+            int m = (int) (w / dim + gsl_rng_uniform(r));
+            walker_multiplier[j] = m;
+            multiplier_sum += m;
+        }
+        new_walkers = create_2D_array(dim, multiplier_sum);
+        int l = 0;    
+        
+        for (int j = 0; j < n; j++)
+        { //For every previous walker
+            for (int k = 0; k < walker_multiplier[j]; k++)
+            { //For every walker child    
+                for (int m = 0; m < dim; m++)
+                {
+                    new_walkers[m][l] = walkers[m][j];
+                }
+                l++;
+            }
+        }
+
+        free(walker_multiplier);
+        destroy_2D_array(walkers);
+        walkers = create_2D_array(dim, multiplier_sum);
+        
+        for(int j = 0; j < multiplier_sum; ++j)
+        {
+            for (int k = 0; k < dim; k++)
+            {
+                walkers[k][j] = new_walkers[k][j];
+            }
+        }
+
+        destroy_2D_array(new_walkers);
+        n = multiplier_sum;
+        if (i == n_eq)
+        {
+            E_t_sum = 0;
+            denominator = 0;
+        }
+        E_t_sum += E_t;
+        denominator++;
+        E_t = update_E_t(E_t_sum / denominator, gamma, n, n0);
+    }
+    destroy_2D_array(walkers);
+    fclose(file);
+    fclose(positions);
+    result_dmc result;
+    result.n = n;
+    return result;
 }
 
 double** polar_to_rect(double** polar, int n)
@@ -158,7 +229,6 @@ double** polar_to_rect(double** polar, int n)
         rect[4][i] = polar[3][i] * sin(polar[4][i]) * sin(polar[5][i]);
         rect[5][i] = polar[3][i] * cos(polar[4][i]);
     }
-
     return rect;
 }
 
