@@ -1,14 +1,15 @@
 #pragma once
 #include <stdio.h>
 #include <stdbool.h>
+
 /* **********************************************
  *
- * Add v1 and v2 elementwise
- * results is stored in res.
- * The length of the arrays should be len
+ * returns an array of num evenly spaced elements.
+ * if inclusive the elements will be in the closed 
+ * interval [start, end]. 
+ * Otherwise in the open interval (start, end) 
  *
  * **********************************************/
-
 double* 
 linspace(
         double start, 
@@ -17,6 +18,13 @@ linspace(
         bool inclusive
         );
 
+/* **********************************************
+ *
+ * Add v1 and v2 elementwise
+ * results is stored in res.
+ * The length of the arrays should be len
+ *
+ * **********************************************/
 void
 elementwise_addition(
                      double *res,
