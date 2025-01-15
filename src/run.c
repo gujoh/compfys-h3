@@ -23,10 +23,12 @@ void task2(void);
 gsl_rng* get_rand(void);
 double displace_x(double x, double delta_tau, gsl_rng* r);
 double weight_1d(double x, double E_t, double dt);
+double weight_6d(double r1, double r2, double E_t, double dt);
 double update_E_t(double E_t, double gamma, int n, int n0);
 result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
 result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
 double** init_walkers_6d(int n);
+double** polar_to_cart(double** polar, int n);
 
 int
 run(
@@ -55,12 +57,13 @@ void task2(void)
 {
     int n = 1000;
     double** walkers = init_walkers_6d(n);
-    double E_t = 0.5;
+    double** walkers_cartesian = polar_to_cart(walkers, n);
+    double E_t = - 3;
     double delta_tau = 0.01;
     double gamma = 0.5;
     int n_iter = 20000;
     int n_eq = 1500;
-    result_dmc result = diffusion_monte_carlo_6d(walkers, n, E_t, gamma, delta_tau, n_iter, n_eq);
+    result_dmc result = diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq);
 }
 
 result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq)
@@ -162,10 +165,11 @@ result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double
             for (int k = 0; k < dim; k++)
             {
                 walkers[k][j] = displace_x(walkers[k][j], dt, r);
-                w +=  weight_1d(walkers[k][j], E_t, dt);
+                w += weight_1d(walkers[k][j], E_t, dt);
             }
-            //double w = weight_1d(walkers[j], E_t, dt);
+            //double w = weight_1d(walkers[0][j] - walkers[3][j], E_t, dt);
             int m = (int) (w / dim + gsl_rng_uniform(r));
+            printf("%lf\n", w / dim);
             walker_multiplier[j] = m;
             multiplier_sum += m;
         }
@@ -215,7 +219,7 @@ result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double
     return result;
 }
 
-double** polar_to_rect(double** polar, int n)
+double** polar_to_cart(double** polar, int n)
 {
     int dim = 6;
     double** rect = create_2D_array(dim, n);
@@ -271,6 +275,11 @@ double potential_1d(double x)
 double weight_1d(double x, double E_t, double dt)
 {
     return exp(- (potential_1d(x) - E_t) * dt);
+} 
+
+double weight_6d(double r1, double r2, double E_t, double dt)
+{
+    return exp(- (potential_1d(r1 - r2) - E_t) * dt);
 } 
 
 double update_E_t(double E_t, double gamma, int n, int n0)
