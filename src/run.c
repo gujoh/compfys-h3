@@ -38,9 +38,9 @@ run(
     char *argv[]
    )
 {
-    //task1();
+    task1();
     //task2();
-    task3();
+    // task3();
     return 0;
 }
 
