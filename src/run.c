@@ -53,7 +53,7 @@ void task1(void)
     double gamma = 0.5;
     int n_iter = 50000;
     int n_eq = 1500;
-    result_dmc result = diffusion_monte_carlo_1d(walkers, n, E_t, gamma, delta_tau, n_iter, n_eq);
+    diffusion_monte_carlo_1d(walkers, n, E_t, gamma, delta_tau, n_iter, n_eq);
 }
 
 void task2(void)
@@ -66,7 +66,7 @@ void task2(void)
     double gamma = 0.5;
     int n_iter = 500000;
     int n_eq = 1500;
-    result_dmc result = diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 0);
+    diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 0);
 }
 
 void task3(void)
@@ -79,10 +79,10 @@ void task3(void)
     double gamma = 0.5;
     int n_iter = 20000;
     int n_eq = 1500;
-    result_dmc result = diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 1);
+    diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 1);
 }
 
-result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq)
+void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq)
 {
     gsl_rng* r = get_rand();
     int n = n0;
@@ -147,12 +147,12 @@ result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double 
     free(walkers);
     fclose(file);
     fclose(positions);
-    result_dmc result;
-    result.n = n;
-    return result;
+    // result_dmc result;
+    // result.n = n;
+    // return result;
 }
 
-result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int add_drift)
+void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int add_drift)
 {
     gsl_rng* r = get_rand();
     int n = n0;
@@ -231,9 +231,9 @@ result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double
     destroy_2D_array(walkers);
     fclose(file);
     fclose(positions);
-    result_dmc result;
-    result.n = n;
-    return result;
+    // result_dmc result;
+    // result.n = n;
+    // return result;
 }
 
 double** polar_to_cart(double** polar, int n)
