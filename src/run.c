@@ -19,11 +19,14 @@ typedef struct {
 } result_dmc_one_step;
 
 void task1(void);
+void task2(void);
 gsl_rng* get_rand(void);
 double displace_x(double x, double delta_tau, gsl_rng* r);
 double weight_1d(double x, double E_t, double dt);
 double update_E_t(double E_t, double gamma, int n, int n0);
 result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
+result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
+double** init_walkers_6d(int n);
 
 int
 run(
@@ -31,12 +34,13 @@ run(
     char *argv[]
    )
 {
-    task1();
+    //task1();
+    task2();
     return 0;
 }
 
-void task1(void){
-
+void task1(void)
+{
     int n = 200;
     double* walkers = linspace(-5, 5, n, false);
     double E_t = 0.5;
@@ -45,6 +49,18 @@ void task1(void){
     int n_iter = 50000;
     int n_eq = 10;
     result_dmc result = diffusion_monte_carlo_1d(walkers, n, E_t, gamma, delta_tau, n_iter, n_eq);
+}
+
+void task2(void)
+{
+    int n = 1000;
+    double** walkers = init_walkers_6d(n);
+    double E_t = 0.5;
+    double delta_tau = 0.01;
+    double gamma = 0.5;
+    int n_iter = 10000;
+    int n_eq = 10;
+    result_dmc result = diffusion_monte_carlo_6d(walkers, n, E_t, gamma, delta_tau, n_iter, n_eq);
 }
 
 result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq)
@@ -106,11 +122,26 @@ result_dmc diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double 
             E_t = update_E_t(E_t_sum / (i - n_eq + 1), gamma, n, n0);
         }
     }
+    free(walkers);
     fclose(file);
     fclose(positions);
     result_dmc result;
     result.n = n;
     return result;
+}
+
+result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq)
+{
+    gsl_rng* r = get_rand();
+    int n = n0;
+    double E_t_sum = 0;
+    FILE* file = fopen("data/task2.csv", "w+");
+    FILE* positions = fopen("data/positions_task2.csv", "w+");
+    int* walker_multiplier;
+    double** new_walkers;
+
+
+    free(walkers);
 }
 
 double displace_x(double x, double delta_tau, gsl_rng* r)
@@ -133,6 +164,23 @@ double weight_1d(double x, double E_t, double dt)
 double update_E_t(double E_t, double gamma, int n, int n0)
 {
     return E_t - gamma * log((double) n / n0);
+}
+
+double** init_walkers_6d(int n)
+{
+    gsl_rng* r = get_rand();
+    int dim = 6;
+    double** walkers = create_2D_array(dim, n);
+    for (int i = 0; i < n; i++)
+    {
+        walkers[0][i] = 0.7 + gsl_rng_uniform(r);
+        walkers[1][i] = acos(2 * gsl_rng_uniform(r) - 1);
+        walkers[2][i] = 2 * M_PI * gsl_rng_uniform(r);
+        walkers[3][i] = 0.7 + gsl_rng_uniform(r);
+        walkers[4][i] = acos(2 * gsl_rng_uniform(r) - 1);
+        walkers[5][i] = 2 * M_PI * gsl_rng_uniform(r);
+    }
+    return walkers;
 }
 
 gsl_rng* get_rand(void){
