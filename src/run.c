@@ -29,6 +29,7 @@ double update_E_t(double E_t, double gamma, int n, int n0);
 void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
 void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int decomposition, int task);
 double** init_walkers_6d(int n);
+void diffusion_monte_carlo_task2(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
 double** polar_to_cart(double** polar, int n);
 void drift1(double* walker, double alpha, double dt);
 void drift2(double* walker, double alpha, double dt);
@@ -68,12 +69,13 @@ void task2(void)
     int n = 1000;
     double** walkers = init_walkers_6d(n);
     double** walkers_cartesian = polar_to_cart(walkers, n);
+    destroy_2D_array(walkers);
     double E_t = - 3;
     double delta_tau = 0.01;
     double gamma = 0.5;
-    int n_iter = 100000;
+    int n_iter = 1000000;
     int n_eq = 1500;
-    diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 0, 2);
+    diffusion_monte_carlo_task2(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq);
 }
 
 void task3(void)
@@ -81,6 +83,7 @@ void task3(void)
     int n = 1000;
     double** walkers = init_walkers_6d(n);
     double** walkers_cartesian = polar_to_cart(walkers, n);
+    destroy_2D_array(walkers);
     double E_t = - 3;
     double delta_tau = 0.1;
     double gamma = 0.5;
@@ -94,6 +97,7 @@ void task3b(void)
     int n = 1000;
     double** walkers = init_walkers_6d(n);
     double** walkers_cartesian = polar_to_cart(walkers, n);
+    destroy_2D_array(walkers);
     double E_t = - 3;
     double delta_tau = 0.1;
     double gamma = 0.5;
@@ -167,6 +171,80 @@ void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma,
     free(walkers);
     fclose(file);
     fclose(positions);
+}
+
+void diffusion_monte_carlo_task2(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq)
+{
+    gsl_rng* r = get_rand();
+    int n = n0;
+    double E_t_sum = 0;
+    FILE* file = fopen("data/task2.csv", "w+");
+    int* walker_multiplier;
+    double** new_walkers;
+    int dim = 6;
+    int denominator = 0;
+
+    for (int i = 0; i < n_iter; i++)
+    {
+
+        fprintf(file, "%d, %lf\n", n, E_t);
+
+        walker_multiplier = (int*) malloc(sizeof(int) * n);
+        int multiplier_sum = 0; 
+
+        for (int j = 0; j < n; j++)
+        {
+            for (int k = 0; k < dim; k++)
+            {
+                walkers[j][k] = displace_x(walkers[j][k], dt, r);
+            }
+            double v = hamiltonian_potential(walkers[j]);
+            double w = exp(- (v - E_t) * dt);
+            int m = (int) (w  + gsl_rng_uniform(r));
+            m = m > 3 ? 3 : m;
+            walker_multiplier[j] = m;
+            multiplier_sum += m;
+        }
+
+        new_walkers = create_2D_array(multiplier_sum, dim);
+        int l = 0;    
+
+        for (int j = 0; j < n; j++)
+        { //For every previous walker
+            for (int k = 0; k < walker_multiplier[j]; k++)
+            { //For every walker child    
+                for (int m = 0; m < dim; m++)
+                {
+                    new_walkers[l][m] = walkers[j][m];
+                }
+                l++;
+            }
+        }
+        free(walker_multiplier);
+        destroy_2D_array(walkers);
+        walkers = create_2D_array(multiplier_sum, dim);
+        
+        for(int j = 0; j < multiplier_sum; j++)
+        {
+            for (int k = 0; k < dim; k++)
+            {
+                walkers[j][k] = new_walkers[j][k];
+            }
+        }
+
+        destroy_2D_array(new_walkers);
+        n = multiplier_sum;
+        if (i == n_eq)
+        {
+            E_t_sum = 0;
+            denominator = 0;
+        }
+        E_t_sum += E_t;
+        denominator++;
+        E_t = update_E_t(E_t_sum / denominator, gamma, n, n0);
+    }
+    destroy_2D_array(walkers);
+    fclose(file);
 }
 
 void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int decomposition, int task)
