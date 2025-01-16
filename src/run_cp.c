@@ -26,7 +26,7 @@ double displace_x(double x, double delta_tau, gsl_rng* r);
 double weight_1d(double x, double E_t, double dt);
 double update_E_t(double E_t, double gamma, int n, int n0);
 void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
-void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int add_drift, int task);
+void diffusion_monte_carlo_task2(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
 double** init_walkers_6d(int n);
 double** polar_to_cart(double** polar, int n);
 void drift1(double* walker, double alpha, double dt);
@@ -63,10 +63,11 @@ void task2(void)
     int n = 1000;
     double** walkers = init_walkers_6d(n);
     double** walkers_cartesian = polar_to_cart(walkers, n);
+    destroy_2D_array(walkers);
     double E_t = - 3;
     double delta_tau = 0.01;
     double gamma = 0.5;
-    int n_iter = 100000;
+    int n_iter = 1000000;
     int n_eq = 1500;
     diffusion_monte_carlo_task2(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq);
 }
@@ -76,7 +77,7 @@ void diffusion_monte_carlo_task2(double** walkers, int n0, double E_t, double ga
     gsl_rng* r = get_rand();
     int n = n0;
     double E_t_sum = 0;
-    FILE* file = fopen("data/task3.csv", "w+");
+    FILE* file = fopen("data/task2.csv", "w+");
     int* walker_multiplier;
     double** new_walkers;
     int dim = 6;
@@ -97,7 +98,8 @@ void diffusion_monte_carlo_task2(double** walkers, int n0, double E_t, double ga
                 walkers[j][k] = displace_x(walkers[j][k], dt, r);
             }
             double v = hamiltonian_potential(walkers[j]);
-            double w = return exp(- (v - E_t) * dt);
+            double w = exp(- (v - E_t) * dt);
+            w = w > 3 ? 3 : w;
             int m = (int) (w  + gsl_rng_uniform(r));
             walker_multiplier[j] = m;
             multiplier_sum += m;
@@ -185,7 +187,7 @@ double hamiltonian_potential(double* walker)
     double r12_len = distance_between_vectors(r1, r2, 3);
     double r1_len = vector_norm(r1, 3);
     double r2_len = vector_norm(r2, 3);
-    return - 2 / r1_len - 2 / r2_len + 1 / r12_len;
+    return - 2 / (r1_len + 1e-4) - 2 / (r2_len + 1e-4) + 1 / (r12_len + 1e-4); //We add 1e-4 to avoid explosions in hamiltonian potential that woul lead to an explosion in walkers. when v->-inf e^(-v+E_T)-> inf.
 }
 
 void drift1(double* walker, double alpha, double dt)
