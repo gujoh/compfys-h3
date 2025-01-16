@@ -27,10 +27,11 @@ double weight_1d(double x, double E_t, double dt);
 double weight_6d(double* walker, double E_t, double dt);
 double update_E_t(double E_t, double gamma, int n, int n0);
 void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
-void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int add_drift);
+void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int add_drift, int task);
 double** init_walkers_6d(int n);
 double** polar_to_cart(double** polar, int n);
 void drift1(double* walker, double alpha, double dt);
+double radius(double* walker);
 
 int
 run(
@@ -38,9 +39,9 @@ run(
     char *argv[]
    )
 {
-    task1();
+    //task1();
     //task2();
-    //task3();
+    task3();
     return 0;
 }
 
@@ -64,9 +65,9 @@ void task2(void)
     double E_t = - 3;
     double delta_tau = 0.01;
     double gamma = 0.5;
-    int n_iter = 500000;
+    int n_iter = 100000;
     int n_eq = 1500;
-    diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 0);
+    diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 0, 2);
 }
 
 void task3(void)
@@ -79,7 +80,7 @@ void task3(void)
     double gamma = 0.5;
     int n_iter = 20000;
     int n_eq = 1500;
-    diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 1);
+    diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 1, 3);
 }
 
 void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq)
@@ -149,13 +150,17 @@ void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma,
     fclose(positions);
 }
 
-void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int add_drift)
+void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int add_drift, int task)
 {
     gsl_rng* r = get_rand();
     int n = n0;
     double E_t_sum = 0;
-    FILE* file = fopen("data/task3.csv", "w+");
-    FILE* positions = fopen("data/positions_task3.csv", "w+");
+    char buffer1[50];
+    char buffer2[50];
+    sprintf(buffer1, "data/task%d.csv", task);
+    sprintf(buffer2, "data/positions_task%d.csv", task);
+    FILE* file = fopen(buffer1, "w+");
+    FILE* positions = fopen(buffer2, "w+");
     int* walker_multiplier;
     double** new_walkers;
     int dim = 6;
@@ -165,7 +170,7 @@ void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma
     { // For every DMC iteration
         // for (int j = 0; j < n; j++)
         // {
-        //     fprintf(positions, "%lf\n", walkers[j]);
+        //     fprintf(positions, "%lf, %lf\n", radius(walkers[j]), radius(walkers[j] + 3));
         // }
         fprintf(file, "%d, %lf\n", n, E_t);
 
@@ -274,8 +279,7 @@ double weight_6d(double* walker, double E_t, double dt)
     double r12_len = distance_between_vectors(r1, r2, 3);
     double r1_len = vector_norm(r1, 3);
     double r2_len = vector_norm(r2, 3);
-    double v = - 2 / sqrt(pow(r1_len, 2) + 1e-4) - 2 / sqrt(pow(r2_len, 2) + 1e-4)
-        + 1 / sqrt(pow(r12_len, 2) + 1e-4);
+    double v = - 2 / r1_len - 2 / r2_len + 1 / r12_len;
     return exp(- (v - E_t) * dt);
 } 
 
@@ -295,11 +299,8 @@ void drift1(double* walker, double alpha, double dt)
     double r12_len = distance_between_vectors(r1, r2, 3);
     for (int i = 0; i < 3; i++)
     {
-        walker[i] += (- 2 * r1_norm[i] - r12_norm[i] / (2 * pow(1 + alpha * r12_len, 2))) * dt;
-    }
-    for (int i = 3; i < 6; i++)
-    {
-        walker[i] += (- 2 * r2_norm[i-3] + r12_norm[i-3] / (2 * pow(1 + alpha * r12_len, 2))) * dt;
+        walker[i] += (- 2. * r1_norm[i] - r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
+        walker[i + 3] += (- 2. * r2_norm[i] + r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
     }
 }
 
@@ -343,6 +344,12 @@ double** init_walkers_6d(int n)
         walkers[i][5] = 2 * M_PI * gsl_rng_uniform(r);
     }
     return walkers;
+}
+
+double radius(double* walker)
+{
+    return sqrt(walker[0] * walker[0] + walker[1] * walker[1] +
+        walker[2] * walker[2]);
 }
 
 gsl_rng* get_rand(void){
