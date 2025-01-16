@@ -99,8 +99,8 @@ void diffusion_monte_carlo_task2(double** walkers, int n0, double E_t, double ga
             }
             double v = hamiltonian_potential(walkers[j]);
             double w = exp(- (v - E_t) * dt);
-            w = w > 3 ? 3 : w;
             int m = (int) (w  + gsl_rng_uniform(r));
+            m = m > 3 ? 3 : m;
             walker_multiplier[j] = m;
             multiplier_sum += m;
         }
