@@ -24,14 +24,16 @@ void task3(void);
 gsl_rng* get_rand(void);
 double displace_x(double x, double delta_tau, gsl_rng* r);
 double weight_1d(double x, double E_t, double dt);
-double weight_6d(double* walker, double E_t, double dt);
 double update_E_t(double E_t, double gamma, int n, int n0);
 void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
 void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int add_drift, int task);
 double** init_walkers_6d(int n);
 double** polar_to_cart(double** polar, int n);
 void drift1(double* walker, double alpha, double dt);
+void drift2(double* walker, double alpha, double dt);
 double radius(double* walker);
+double hamiltonian_potential(double* walker);
+double get_E_l(double* walker, double alpha);
 
 int
 run(
@@ -40,8 +42,8 @@ run(
    )
 {
     //task1();
-    //task2();
-    task3();
+    task2();
+    //task3();
     return 0;
 }
 
@@ -78,7 +80,7 @@ void task3(void)
     double E_t = - 3;
     double delta_tau = 0.01;
     double gamma = 0.5;
-    int n_iter = 20000;
+    int n_iter = 100000;
     int n_eq = 1500;
     diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 1, 3);
 }
@@ -172,6 +174,7 @@ void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma
         // {
         //     fprintf(positions, "%lf, %lf\n", radius(walkers[j]), radius(walkers[j] + 3));
         // }
+        printf("%d, %lf\n", n, E_t);
         fprintf(file, "%d, %lf\n", n, E_t);
 
         walker_multiplier = (int*) malloc(sizeof(int) * n);
@@ -183,11 +186,25 @@ void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma
             {
                 walkers[j][k] = displace_x(walkers[j][k], dt, r);
             }
-            if (add_drift == 1)
+            double w = 0;
+            if (add_drift == 0)
+            {
+                double v = hamiltonian_potential(walkers[j]);
+                w = exp(- (v - E_t) * dt);
+               // printf("%lf\n", w);
+            }
+            else if (add_drift == 1)
             {
                 drift1(walkers[j], 0.15, dt);
+                double E_l = get_E_l(walkers[j], 0.15);
+                w = exp(- (E_l - E_t) * dt);
             }
-            double w = weight_6d(walkers[j], E_t, dt);
+            else if (add_drift == 2)
+            {
+                drift2(walkers[j], 0.15, dt); // Change this
+                double E_l = get_E_l(walkers[j], 0.15);
+                w = exp(- (E_l - E_t) * dt);
+            } 
             int m = (int) (w  + gsl_rng_uniform(r));
             walker_multiplier[j] = m;
             multiplier_sum += m;
@@ -272,16 +289,15 @@ double weight_1d(double x, double E_t, double dt)
     return exp(- (potential_1d(x) - E_t) * dt);
 } 
 
-double weight_6d(double* walker, double E_t, double dt)
+double hamiltonian_potential(double* walker)
 {
     double r1[] = {walker[0], walker[1], walker[2]};
     double r2[] = {walker[3], walker[4], walker[5]};
     double r12_len = distance_between_vectors(r1, r2, 3);
     double r1_len = vector_norm(r1, 3);
     double r2_len = vector_norm(r2, 3);
-    double v = - 2 / r1_len - 2 / r2_len + 1 / r12_len;
-    return exp(- (v - E_t) * dt);
-} 
+    return - 2 / r1_len - 2 / r2_len + 1 / r12_len;
+}
 
 void drift1(double* walker, double alpha, double dt)
 {
@@ -304,25 +320,87 @@ void drift1(double* walker, double alpha, double dt)
     }
 }
 
-// double E_l(double* walker, double E_t, double alpha, double dt)
-// {
-//        double r1[] = {walker[0], walker[1], walker[2]};
-//     double r2[] = {walker[3], walker[4], walker[5]};
-//     double r12_len = distance_between_vectors(r1, r2, 3);
-//     double r_norm_diff[] = {0, 0, 0};
-//     double r_diff[] = {0, 0, 0};
-//     double r1_norm[3]; 
-//     double r2_norm[3];
-//     memcpy(r1_norm, r1, sizeof(r1_norm)); 
-//     memcpy(r2_norm, r2, sizeof(r2_norm)); 
-//     double denominator = 1 + alpha * r12_len;
-//     normalize_vector(r1_norm, 3);
-//     normalize_vector(r2_norm, 3);
-//     elementwise_subtraction(r_norm_diff, r1_norm, r2_norm, 3);
-//     elementwise_subtraction(r_diff, r1, r2, 3);
-//     double E_l = - 4 + (dot_product(r_norm_diff, r_diff, 3)) / (r12_len * pow(denominator, 2)) -
-//         1 / (r12_len * pow(denominator, 3)) - 1 / (4 * pow(denominator, 4)) + 1 / r12_len;
-// }
+void drift2(double* walker, double alpha, double dt)
+{
+    int dim = 6;
+    double* temp_walker = (double*) malloc(sizeof(double) * dim);
+    memcpy(temp_walker, walker, sizeof(double) * dim);
+    drift1(temp_walker, alpha, dt / 2);
+    double r1[] = {temp_walker[0], temp_walker[1], temp_walker[2]};
+    double r2[] = {temp_walker[3], temp_walker[4], temp_walker[5]};
+    double r1_norm[3]; 
+    double r2_norm[3];
+    memcpy(r1_norm, r1, sizeof(r1_norm)); 
+    memcpy(r2_norm, r2, sizeof(r2_norm)); 
+    normalize_vector(r1_norm, 3);
+    normalize_vector(r2_norm, 3);
+    double r12_norm[3];
+    elementwise_subtraction(r12_norm, r1, r2, 3);
+    normalize_vector(r12_norm, 3);
+    double r12_len = distance_between_vectors(r1, r2, 3);
+    for (int i = 0; i < 3; i++)
+    {
+        walker[i] += (- 2. * r1_norm[i] - r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
+        walker[i + 3] += (- 2. * r2_norm[i] + r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
+    }
+    free(temp_walker);
+    // double r1[] = {walker[0], walker[1], walker[2]};
+    // double r2[] = {walker[3], walker[4], walker[5]};
+    // double r1_norm[3]; 
+    // double r2_norm[3];
+    // memcpy(r1_norm, r1, sizeof(r1_norm)); 
+    // memcpy(r2_norm, r2, sizeof(r2_norm)); 
+    // normalize_vector(r1_norm, 3);
+    // normalize_vector(r2_norm, 3);
+    // double r12_norm[3];
+    // elementwise_subtraction(r12_norm, r1, r2, 3);
+    // normalize_vector(r12_norm, 3);
+    // double r12_len = distance_between_vectors(r1, r2, 3);
+    // double temp_walker[6];
+    // for (int i = 0; i < 3; i++)
+    // {
+    //     temp_walker[i] = walker[i] + (- 2. * r1_norm[i] - r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
+    //     temp_walker[i + 3] = walker[i + 3] + (- 2. * r2_norm[i] + r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
+    // }
+
+    // r1 = {walker[0], walker[1], walker[2]};
+    // r2 = {walker[3], walker[4], walker[5]};
+    // r1_norm[3]; 
+    // double r2_norm[3];
+    // memcpy(r1_norm, r1, sizeof(r1_norm)); 
+    // memcpy(r2_norm, r2, sizeof(r2_norm)); 
+    // normalize_vector(r1_norm, 3);
+    // normalize_vector(r2_norm, 3);
+    // double r12_norm[3];
+    // elementwise_subtraction(r12_norm, r1, r2, 3);
+    // normalize_vector(r12_norm, 3);
+    // double r12_len = distance_between_vectors(r1, r2, 3);
+    // for (int i = 0; i < 3; i++)
+    // {
+    //     walker[i] += (- 2. * r1_norm[i] - r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
+    //     walker[i + 3] += (- 2. * r2_norm[i] + r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
+    // }
+}
+
+double get_E_l(double* walker, double alpha)
+{
+    double r1[] = {walker[0], walker[1], walker[2]};
+    double r2[] = {walker[3], walker[4], walker[5]};
+    double r12_len = distance_between_vectors(r1, r2, 3);
+    double r_norm_diff[] = {0, 0, 0};
+    double r_diff[] = {0, 0, 0};
+    double r1_norm[3]; 
+    double r2_norm[3];
+    memcpy(r1_norm, r1, sizeof(r1_norm)); 
+    memcpy(r2_norm, r2, sizeof(r2_norm)); 
+    double denominator = 1 + alpha * r12_len;
+    normalize_vector(r1_norm, 3);
+    normalize_vector(r2_norm, 3);
+    elementwise_subtraction(r_norm_diff, r1_norm, r2_norm, 3);
+    elementwise_subtraction(r_diff, r1, r2, 3);
+    return - 4 + (dot_product(r_norm_diff, r_diff, 3)) / (r12_len * pow(denominator, 2)) -
+        1 / (r12_len * pow(denominator, 3)) - 1 / (4 * pow(denominator, 4)) + 1 / r12_len;
+}
 
 double update_E_t(double E_t, double gamma, int n, int n0)
 {
