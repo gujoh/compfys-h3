@@ -21,19 +21,23 @@ typedef struct {
 void task1(void);
 void task2(void);
 void task3(void);
+void task3b(void);
 gsl_rng* get_rand(void);
 double displace_x(double x, double delta_tau, gsl_rng* r);
 double weight_1d(double x, double E_t, double dt);
 double update_E_t(double E_t, double gamma, int n, int n0);
 void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
-void diffusion_monte_carlo_task2(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
+void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int decomposition, int task);
 double** init_walkers_6d(int n);
+void diffusion_monte_carlo_task2(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
 double** polar_to_cart(double** polar, int n);
-void drift1(double* walker, double alpha, double dt);
-void drift2(double* walker, double alpha, double dt);
+void first_order_drift_6d(double* walker, double alpha, double dt);
+void second_order_drift_6d(double* walker, double alpha, double dt);
 double radius(double* walker);
 double hamiltonian_potential(double* walker);
 double get_E_l(double* walker, double alpha);
+double** reactive_part(double** walkers, int* n_ptr, double dt, double E_t, gsl_rng* r);
+void diffusive_part(double** walkers, int n, double dt, gsl_rng* r);
 
 int
 run(
@@ -42,7 +46,9 @@ run(
    )
 {
     //task1();
-    task2();
+    //task2();
+    //task3();
+    task3b();
     return 0;
 }
 
@@ -70,6 +76,101 @@ void task2(void)
     int n_iter = 1000000;
     int n_eq = 1500;
     diffusion_monte_carlo_task2(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq);
+}
+
+void task3(void)
+{
+    int n = 1000;
+    double** walkers = init_walkers_6d(n);
+    double** walkers_cartesian = polar_to_cart(walkers, n);
+    destroy_2D_array(walkers);
+    double E_t = - 3;
+    double delta_tau = 0.1;
+    double gamma = 0.5;
+    int n_iter = 50000;
+    int n_eq = 1500;
+    diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 1, 3);
+}
+
+void task3b(void)
+{
+    int n = 1000;
+    double** walkers = init_walkers_6d(n);
+    double** walkers_cartesian = polar_to_cart(walkers, n);
+    destroy_2D_array(walkers);
+    double E_t = - 3;
+    double delta_tau = 0.1;
+    double gamma = 0.5;
+    int n_iter = 5000;
+    int n_eq = 1500;
+    diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 2, 4);   
+}
+
+void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq)
+{
+    gsl_rng* r = get_rand();
+    int n = n0;
+    double E_t_sum = 0;
+    int denominator = 0;
+    FILE* file = fopen("data/task1.csv", "w+");
+    FILE* positions = fopen("data/positions_task1.csv", "w+");
+    int* walker_multiplier;
+    double* new_walkers;
+
+    for (int i = 0; i < n_iter; i++)
+    { // For every DMC iteration
+        for (int j = 0; j < n; j++)
+        {
+            fprintf(positions, "%lf\n", walkers[j]);
+        }
+        fprintf(file, "%d, %lf\n", n, E_t);
+
+        walker_multiplier = (int*) malloc(sizeof(int) * n);
+        int multiplier_sum = 0; 
+
+        for (int j = 0; j < n; j++)
+        {
+            walkers[j] = displace_x(walkers[j], dt, r);
+            double w = weight_1d(walkers[j], E_t, dt);
+            int m = (int) (w + gsl_rng_uniform(r));
+            walker_multiplier[j] = m;
+            multiplier_sum += m;
+        }
+
+        new_walkers = (double*) malloc(sizeof(double) * multiplier_sum);
+        int l = 0;    
+        
+        for (int j = 0; j < n; j++)
+        { // For every previous walker
+            for (int k = 0; k < walker_multiplier[j]; k++)
+            { // For every walker child    
+                new_walkers[l] = walkers[j];
+                l++;
+            }
+        }
+        free(walker_multiplier);
+        free(walkers);
+        walkers = (double*) malloc(sizeof(double) * multiplier_sum);
+        
+        for(int j = 0; j < multiplier_sum; ++j)
+        {
+            walkers[j] = new_walkers[j];
+        }
+
+        free(new_walkers);
+        n = multiplier_sum;
+        if (i == n_eq)
+        {
+            E_t_sum = 0;
+            denominator = 0;
+        }
+        E_t_sum += E_t;
+        denominator++;
+        E_t = update_E_t(E_t_sum / denominator, gamma, n, n0);
+    }
+    free(walkers);
+    fclose(file);
+    fclose(positions);
 }
 
 void diffusion_monte_carlo_task2(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq)
@@ -146,6 +247,66 @@ void diffusion_monte_carlo_task2(double** walkers, int n0, double E_t, double ga
     fclose(file);
 }
 
+void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int decomposition, int task)
+{
+    gsl_rng* r = get_rand();
+    int n = n0;
+    double E_t_sum = 0;
+    char buffer1[50];
+    char buffer2[50];
+    sprintf(buffer1, "data/task%d.csv", task);
+    sprintf(buffer2, "data/positions_task%d.csv", task);
+    FILE* file = fopen(buffer1, "w+");
+    FILE* positions = fopen(buffer2, "w+");
+    int denominator = 0;
+
+    for (int i = 0; i < n_iter; i++)
+    { // For every DMC iteration
+        for (int j = 0; j < n; j++)
+        {
+            fprintf(positions, "%lf, %lf\n", radius(walkers[j]), radius(walkers[j] + 3));
+        }
+        fprintf(file, "%d, %lf\n", n, E_t);
+
+        if (decomposition == 1) // Basic decomposition.
+        { // Reactive part -> Diffusive part -> Drift
+            walkers = reactive_part(walkers, &n, dt, E_t, r);
+            diffusive_part(walkers, n, dt, r);
+            for (int j = 0; j < n; j++)
+            {
+                first_order_drift_6d(walkers[j], 0.15, dt);
+            }
+        }
+        else if (decomposition == 2) // Advanced decomposition.
+        {   // Half drift -> Half diffusive -> Reactive -> Half diffusive -> Half drift
+            for (int j = 0; j < n; j++)
+            {
+                second_order_drift_6d(walkers[j], 0.15, dt / 2);
+            }
+            diffusive_part(walkers, n, dt / 2, r);
+            walkers = reactive_part(walkers, &n, dt, E_t, r);
+            diffusive_part(walkers, n, dt / 2, r);
+            for (int j = 0; j < n; j++)
+            {
+                second_order_drift_6d(walkers[j], 0.15, dt / 2);
+            }
+        }
+        
+        // Updating E_t
+        if (i == n_eq)
+        {
+            E_t_sum = 0;
+            denominator = 0;
+        }
+        E_t_sum += E_t;
+        denominator++;
+        E_t = update_E_t(E_t_sum / denominator, gamma, n, n0);
+    }
+    destroy_2D_array(walkers);
+    fclose(file);
+    fclose(positions);
+}
+
 double** polar_to_cart(double** polar, int n)
 {
     int dim = 6;
@@ -187,55 +348,78 @@ double hamiltonian_potential(double* walker)
     double r12_len = distance_between_vectors(r1, r2, 3);
     double r1_len = vector_norm(r1, 3);
     double r2_len = vector_norm(r2, 3);
-    return - 2 / (r1_len + 1e-4) - 2 / (r2_len + 1e-4) + 1 / (r12_len + 1e-4); //We add 1e-4 to avoid explosions in hamiltonian potential that woul lead to an explosion in walkers. when v->-inf e^(-v+E_T)-> inf.
+    return - 2 / (r1_len + 1e-4) - 2 / (r2_len + 1e-4)+ 1 / (r12_len + 1e-4);
 }
 
-void drift1(double* walker, double alpha, double dt)
+void v_F(double* v, double* walker, double alpha)
 {
+    // r_1, r_2
     double r1[] = {walker[0], walker[1], walker[2]};
     double r2[] = {walker[3], walker[4], walker[5]};
-    double r1_norm[3]; 
-    double r2_norm[3];
-    memcpy(r1_norm, r1, sizeof(r1_norm)); 
-    memcpy(r2_norm, r2, sizeof(r2_norm)); 
+
+    // r_1/|r_1|, r_2/|r_2|
+    double r1_norm[] = {walker[0], walker[1], walker[2]}; 
+    double r2_norm[] = {walker[3], walker[4], walker[5]};
     normalize_vector(r1_norm, 3);
     normalize_vector(r2_norm, 3);
+
+    // r_12/|r_12|
     double r12_norm[3];
     elementwise_subtraction(r12_norm, r1, r2, 3);
     normalize_vector(r12_norm, 3);
+
+    // |r_12|
     double r12_len = distance_between_vectors(r1, r2, 3);
-    for (int i = 0; i < 3; i++)
+
+    // 2(1 + alpha |r_12|)^2
+    double shared_denominator = 2. * (1 + alpha * r12_len) * (1 + alpha * r12_len);
+
+    for(int i = 0; i < 3; i++)
     {
-        walker[i] += (- 2. * r1_norm[i] - r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
-        walker[i + 3] += (- 2. * r2_norm[i] + r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
+        v[i]   = -2 * r1_norm[i] - r12_norm/ shared_denominator;
+        v[i+3] = -2 * r2_norm[i] + r12_norm/ shared_denominator;
     }
 }
 
-void drift2(double* walker, double alpha, double dt)
+void first_order_drift_6d(double* walker, double alpha, double dt)
 {
-    int dim = 6;
-    double* temp_walker = (double*) malloc(sizeof(double) * dim);
-    memcpy(temp_walker, walker, sizeof(double) * dim);
-    drift1(temp_walker, alpha, dt / 2);
-    double r1[] = {temp_walker[0], temp_walker[1], temp_walker[2]};
-    double r2[] = {temp_walker[3], temp_walker[4], temp_walker[5]};
-    double r1_norm[3]; 
-    double r2_norm[3];
-    memcpy(r1_norm, r1, sizeof(r1_norm)); 
-    memcpy(r2_norm, r2, sizeof(r2_norm)); 
-    normalize_vector(r1_norm, 3);
-    normalize_vector(r2_norm, 3);
-    double r12_norm[3];
-    elementwise_subtraction(r12_norm, r1, r2, 3);
-    normalize_vector(r12_norm, 3);
-    double r12_len = distance_between_vectors(r1, r2, 3);
-    for (int i = 0; i < 3; i++)
+    
+    int dim = 6
+    double v[] = {0., 0., 0., 0., 0., 0.};
+    v_F(v, walker, alpha);
+    
+    for(int i = 0; i < dim; i++)
     {
-        walker[i] += (- 2. * r1_norm[i] - r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
-        walker[i + 3] += (- 2. * r2_norm[i] + r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
+        walker[i] += v[i]*dt;
     }
-    free(temp_walker);
 }
+
+void second_order_drift_6d(double* walker, double alpha, double dt)
+{
+    int dim = 6
+
+    double v[] = {0., 0., 0., 0., 0., 0.};
+    
+    double tmp_walker[dim];
+    memcpy(tmp_walker, walker, sizeof(tmp_walker)); 
+    
+    // R_{1/2}
+    v_F(v, walker, alpha);
+    for(int i = 0; i < dim; i++)
+    {
+        tmp_walker[i] += v[i]*(dt/2);
+    }
+
+    v = {0., 0., 0., 0., 0., 0.};
+
+    // R(dt)
+    v_F(v, tmp_walker, alpha);
+    for(int i = 0; i < dim; i++)
+    {
+        walker[i] += v[i]*dt;
+    }    
+}
+
 
 double get_E_l(double* walker, double alpha)
 {
@@ -296,69 +480,63 @@ gsl_rng* get_rand(void){
     return r;
 }
 
-void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq)
+double** reactive_part(double** walkers, int* n_ptr, double dt, double E_t, gsl_rng* r)
 {
-    gsl_rng* r = get_rand();
-    int n = n0;
-    double E_t_sum = 0;
-    int denominator = 0;
-    FILE* file = fopen("data/task1.csv", "w+");
-    FILE* positions = fopen("data/positions_task1.csv", "w+");
-    int* walker_multiplier;
-    double* new_walkers;
+    int n = *n_ptr;
+    int multiplier_sum = 0;
+    int* walker_multiplier = (int*) malloc(sizeof(int) * n);
+    int dim = 6;
 
-    for (int i = 0; i < n_iter; i++)
-    { // For every DMC iteration
-        for (int j = 0; j < n; j++)
-        {
-            fprintf(positions, "%lf\n", walkers[j]);
-        }
-        fprintf(file, "%d, %lf\n", n, E_t);
-
-        walker_multiplier = (int*) malloc(sizeof(int) * n);
-        int multiplier_sum = 0; 
-
-        for (int j = 0; j < n; j++)
-        {
-            walkers[j] = displace_x(walkers[j], dt, r);
-            double w = weight_1d(walkers[j], E_t, dt);
-            int m = (int) (w + gsl_rng_uniform(r));
-            walker_multiplier[j] = m;
-            multiplier_sum += m;
-        }
-
-        new_walkers = (double*) malloc(sizeof(double) * multiplier_sum);
-        int l = 0;    
-        
-        for (int j = 0; j < n; j++)
-        { // For every previous walker
-            for (int k = 0; k < walker_multiplier[j]; k++)
-            { // For every walker child    
-                new_walkers[l] = walkers[j];
-                l++;
-            }
-        }
-        free(walker_multiplier);
-        free(walkers);
-        walkers = (double*) malloc(sizeof(double) * multiplier_sum);
-        
-        for(int j = 0; j < multiplier_sum; ++j)
-        {
-            walkers[j] = new_walkers[j];
-        }
-
-        free(new_walkers);
-        n = multiplier_sum;
-        if (i == n_eq)
-        {
-            E_t_sum = 0;
-            denominator = 0;
-        }
-        E_t_sum += E_t;
-        denominator++;
-        E_t = update_E_t(E_t_sum / denominator, gamma, n, n0);
+    for (int j = 0; j < n; j++)
+    {
+        double E_l = get_E_l(walkers[j], 0.15);
+        double w = exp(- (E_l - E_t) * dt);
+        int m = (int) (w  + gsl_rng_uniform(r));
+        //printf("%d, %lf\n", m, w);
+        walker_multiplier[j] = m;
+        multiplier_sum += m;
     }
-    free(walkers);
-    fclose(file);
-    fclose(positions);
+
+    double** new_walkers = create_2D_array(multiplier_sum, dim);
+    int l = 0;    
+
+    for (int j = 0; j < n; j++)
+    { //For every previous walker
+        for (int k = 0; k < walker_multiplier[j]; k++)
+        { //For every walker child    
+            for (int m = 0; m < dim; m++)
+            {
+                new_walkers[l][m] = walkers[j][m];
+            }
+            l++;
+        }
+    }
+
+    destroy_2D_array(walkers);
+    walkers = create_2D_array(multiplier_sum, dim);
+    
+    for(int j = 0; j < multiplier_sum; j++)
+    {
+        for (int k = 0; k < dim; k++)
+        {
+            walkers[j][k] = new_walkers[j][k];
+        }
+    }
+
+    free(walker_multiplier);
+    destroy_2D_array(new_walkers);
+    *n_ptr = multiplier_sum;
+    //printf("%d\n", multiplier_sum);
+    return walkers;
+}
+
+void diffusive_part(double** walkers, int n, double dt, gsl_rng* r)
+{
+    for (int j = 0; j < n; j++)
+    {
+        for (int k = 0; k < 6; k++)
+        {
+            walkers[j][k] = displace_x(walkers[j][k], dt, r);
+        }
+    }
 }
