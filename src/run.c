@@ -51,8 +51,8 @@ run(
 {
     //task1();
     //task2();
-    task3();
-    //task3b();
+    //task3();
+    task3b();
     //task4();
     return 0;
 }
@@ -419,15 +419,15 @@ void v_F(double* v, double* walker, double alpha)
 
     for(int i = 0; i < 3; i++)
     {
-        v[i]   = -2 * r1_norm[i] - r12_norm/ shared_denominator;
-        v[i+3] = -2 * r2_norm[i] + r12_norm/ shared_denominator;
+        v[i]   = -2 * r1_norm[i] - r12_norm[i] / shared_denominator;
+        v[i+3] = -2 * r2_norm[i] + r12_norm[i] / shared_denominator;
     }
 }
 
 void first_order_drift_6d(double* walker, double alpha, double dt)
 {
     
-    int dim = 6
+    int dim = 6;
     double v[] = {0., 0., 0., 0., 0., 0.};
     v_F(v, walker, alpha);
     
@@ -439,7 +439,7 @@ void first_order_drift_6d(double* walker, double alpha, double dt)
 
 void second_order_drift_6d(double* walker, double alpha, double dt)
 {
-    int dim = 6
+    int dim = 6;
 
     double v[] = {0., 0., 0., 0., 0., 0.};
     
@@ -488,7 +488,7 @@ double get_E_l(double* walker, double alpha)
     elementwise_subtraction(r_diff, r1, r2, 3);
     
     // (r^_1 - r^_2)•(r_1 - r_2)
-    double dot = (dot_product(r_norm_diff, r_diff, 3))
+    double dot = (dot_product(r_norm_diff, r_diff, 3));
 
     return - 4 + dot / (r12_len * pow(denominator, 2)) -
         1 / (r12_len * pow(denominator, 3)) - 1 / (4 * pow(denominator, 4)) + 1 / r12_len;
