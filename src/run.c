@@ -104,7 +104,7 @@ void task3b(void)
     double** walkers_cartesian = polar_to_cart(walkers, n);
     destroy_2D_array(walkers);
     double E_t = - 3;
-    double delta_tau = 0.1;
+    double delta_tau = 0.01;
     double gamma = 0.5;
     int n_iter = 20000;
     int n_eq = 1500;
@@ -307,12 +307,12 @@ result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double
 
         if (decomposition == 1) // Basic decomposition.
         { // Reactive part -> Diffusive part -> Drift
-            walkers = reactive_part(walkers, &n, dt, E_t, r);
-            diffusive_part(walkers, n, dt, r);
             for (int j = 0; j < n; j++)
             {
                 first_order_drift_6d(walkers[j], ALPHA, dt);
             }
+            diffusive_part(walkers, n, dt, r);
+            walkers = reactive_part(walkers, &n, dt, E_t, r);
         }
         else if (decomposition == 2) // Advanced decomposition.
         {   // Half drift -> Half diffusive -> Reactive -> Half diffusive -> Half drift
