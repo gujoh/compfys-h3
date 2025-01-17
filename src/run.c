@@ -35,8 +35,8 @@ result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double
 double** init_walkers_6d(int n);
 void diffusion_monte_carlo_task2(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
 double** polar_to_cart(double** polar, int n);
-void drift1(double* walker, double alpha, double dt);
-void drift2(double* walker, double alpha, double dt);
+void first_order_drift_6d(double* walker, double alpha, double dt);
+void second_order_drift_6d(double* walker, double alpha, double dt);
 double radius(double* walker);
 double hamiltonian_potential(double* walker);
 double get_E_l(double* walker, double alpha);
@@ -311,21 +311,21 @@ result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double
             diffusive_part(walkers, n, dt, r);
             for (int j = 0; j < n; j++)
             {
-                drift1(walkers[j], ALPHA, dt);
+                first_order_drift_6d(walkers[j], ALPHA, dt);
             }
         }
         else if (decomposition == 2) // Advanced decomposition.
         {   // Half drift -> Half diffusive -> Reactive -> Half diffusive -> Half drift
             for (int j = 0; j < n; j++)
             {
-                drift2(walkers[j], ALPHA, dt / 2);
+                second_order_drift_6d(walkers[j], ALPHA, dt / 2);
             }
             diffusive_part(walkers, n, dt / 2, r);
             walkers = reactive_part(walkers, &n, dt, E_t, r);
             diffusive_part(walkers, n, dt / 2, r);
             for (int j = 0; j < n; j++)
             {
-                drift2(walkers[j], ALPHA, dt / 2);
+                second_order_drift_6d(walkers[j], ALPHA, dt / 2);
             }
         }
         
@@ -394,70 +394,103 @@ double hamiltonian_potential(double* walker)
     return - 2 / (r1_len + 1e-4) - 2 / (r2_len + 1e-4)+ 1 / (r12_len + 1e-4);
 }
 
-void drift1(double* walker, double alpha, double dt)
+void v_F(double* v, double* walker, double alpha)
 {
+    // r_1, r_2
     double r1[] = {walker[0], walker[1], walker[2]};
     double r2[] = {walker[3], walker[4], walker[5]};
-    double r1_norm[3]; 
-    double r2_norm[3];
-    memcpy(r1_norm, r1, sizeof(r1_norm)); 
-    memcpy(r2_norm, r2, sizeof(r2_norm)); 
+
+    // r_1/|r_1|, r_2/|r_2|
+    double r1_norm[] = {walker[0], walker[1], walker[2]}; 
+    double r2_norm[] = {walker[3], walker[4], walker[5]};
     normalize_vector(r1_norm, 3);
     normalize_vector(r2_norm, 3);
+
+    // r_12/|r_12|
     double r12_norm[3];
     elementwise_subtraction(r12_norm, r1, r2, 3);
     normalize_vector(r12_norm, 3);
+
+    // |r_12|
     double r12_len = distance_between_vectors(r1, r2, 3);
-    for (int i = 0; i < 3; i++)
+
+    // 2(1 + alpha |r_12|)^2
+    double shared_denominator = 2. * (1 + alpha * r12_len) * (1 + alpha * r12_len);
+
+    for(int i = 0; i < 3; i++)
     {
-        walker[i] += (- 2. * r1_norm[i] - r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
-        walker[i + 3] += (- 2. * r2_norm[i] + r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
+        v[i]   = -2 * r1_norm[i] - r12_norm/ shared_denominator;
+        v[i+3] = -2 * r2_norm[i] + r12_norm/ shared_denominator;
     }
 }
 
-void drift2(double* walker, double alpha, double dt)
+void first_order_drift_6d(double* walker, double alpha, double dt)
 {
-    int dim = 6;
-    double* temp_walker = (double*) malloc(sizeof(double) * dim);
-    memcpy(temp_walker, walker, sizeof(double) * dim);
-    drift1(temp_walker, alpha, dt / 2);
-    double r1[] = {temp_walker[0], temp_walker[1], temp_walker[2]};
-    double r2[] = {temp_walker[3], temp_walker[4], temp_walker[5]};
-    double r1_norm[3]; 
-    double r2_norm[3];
-    memcpy(r1_norm, r1, sizeof(r1_norm)); 
-    memcpy(r2_norm, r2, sizeof(r2_norm)); 
-    normalize_vector(r1_norm, 3);
-    normalize_vector(r2_norm, 3);
-    double r12_norm[3];
-    elementwise_subtraction(r12_norm, r1, r2, 3);
-    normalize_vector(r12_norm, 3);
-    double r12_len = distance_between_vectors(r1, r2, 3);
-    for (int i = 0; i < 3; i++)
+    
+    int dim = 6
+    double v[] = {0., 0., 0., 0., 0., 0.};
+    v_F(v, walker, alpha);
+    
+    for(int i = 0; i < dim; i++)
     {
-        walker[i] += (- 2. * r1_norm[i] - r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
-        walker[i + 3] += (- 2. * r2_norm[i] + r12_norm[i] / (2. * pow(1 + alpha * r12_len, 2))) * dt;
+        walker[i] += v[i]*dt;
     }
-    free(temp_walker);
+}
+
+void second_order_drift_6d(double* walker, double alpha, double dt)
+{
+    int dim = 6
+
+    double v[] = {0., 0., 0., 0., 0., 0.};
+    
+    double tmp_walker[dim];
+    memcpy(tmp_walker, walker, sizeof(tmp_walker)); 
+    
+    // R_{1/2}
+    v_F(v, walker, alpha);
+    for(int i = 0; i < dim; i++)
+    {
+        tmp_walker[i] += v[i]*(dt/2);
+    }
+
+    // R(dt)
+    v_F(v, tmp_walker, alpha);
+    for(int i = 0; i < dim; i++)
+    {
+        walker[i] += v[i]*dt;
+    }    
 }
 
 double get_E_l(double* walker, double alpha)
 {
+    // r_1, r_2
     double r1[] = {walker[0], walker[1], walker[2]};
     double r2[] = {walker[3], walker[4], walker[5]};
+    
+    // |r_12|
     double r12_len = distance_between_vectors(r1, r2, 3);
-    double r_norm_diff[] = {0, 0, 0};
-    double r_diff[] = {0, 0, 0};
-    double r1_norm[3]; 
-    double r2_norm[3];
-    memcpy(r1_norm, r1, sizeof(r1_norm)); 
-    memcpy(r2_norm, r2, sizeof(r2_norm)); 
+
+    // (1 + alpha*r_12)
     double denominator = 1 + alpha * r12_len;
+
+    // r^_1, r^_2 = r_1/|r_1|, r_2/|r_2|
+    double r1_norm[] = {walker[0], walker[1], walker[2]};
+    double r2_norm[] = {walker[3], walker[4], walker[5]};
     normalize_vector(r1_norm, 3);
     normalize_vector(r2_norm, 3);
+
+    // (r^_1 - r^_2)
+    double r_norm_diff[] = {0., 0., 0.};
     elementwise_subtraction(r_norm_diff, r1_norm, r2_norm, 3);
+
+    // (r_1 - r_2)
+    double r_diff[] = {0., 0., 0.};
     elementwise_subtraction(r_diff, r1, r2, 3);
-    return - 4 + (dot_product(r_norm_diff, r_diff, 3)) / (r12_len * pow(denominator, 2)) -
+    
+    // (r^_1 - r^_2)•(r_1 - r_2)
+    double dot = (dot_product(r_norm_diff, r_diff, 3))
+
+    return - 4 + dot / (r12_len * pow(denominator, 2)) -
         1 / (r12_len * pow(denominator, 3)) - 1 / (4 * pow(denominator, 4)) + 1 / r12_len;
 }
 
