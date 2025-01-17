@@ -8,6 +8,8 @@
 #include "tools.h"
 #include <stdbool.h>
 
+#define ALPHA 0.15
+
 typedef struct {
     double* walkers; 
     int n;
@@ -90,7 +92,7 @@ void task3(void)
     double E_t = - 3;
     double delta_tau = 0.1;
     double gamma = 0.5;
-    int n_iter = 50000;
+    int n_iter = 25000;
     int n_eq = 1500;
     diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 1, 3, true);
 }
@@ -104,7 +106,7 @@ void task3b(void)
     double E_t = - 3;
     double delta_tau = 0.1;
     double gamma = 0.5;
-    int n_iter = 5000;
+    int n_iter = 20000;
     int n_eq = 1500;
     diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 2, 4, true);   
 }
@@ -113,16 +115,17 @@ void task4(void)
 {
     int n = 1000;
     double gamma = 0.5;
-    int n_iter = 25000;
+    int t = 2000;
     int n_eq = 1500;
     double E_t = - 3;
-    int n_runs = 25;
+    int n_runs = 20;
     double* dts = linspace(0.01, 0.4, n_runs, true);
     FILE* file = fopen("data/task5.csv", "w+");
 
     for (int i = 0; i < n_runs; i++)
     {   
         printf("dt: %.3lf\n", dts[i]);
+        int n_iter = t / dts[i];
         double** walkers = init_walkers_6d(n);
         result_dmc result1 = diffusion_monte_carlo_6d(polar_to_cart(walkers, n), n, E_t, gamma, dts[i], n_iter, n_eq, 1, 5, false);  
         result_dmc result2 = diffusion_monte_carlo_6d(polar_to_cart(walkers, n), n, E_t, gamma, dts[i], n_iter, n_eq, 2, 5, false);  
@@ -308,21 +311,21 @@ result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double
             diffusive_part(walkers, n, dt, r);
             for (int j = 0; j < n; j++)
             {
-                drift1(walkers[j], 0.15, dt);
+                drift1(walkers[j], ALPHA, dt);
             }
         }
         else if (decomposition == 2) // Advanced decomposition.
         {   // Half drift -> Half diffusive -> Reactive -> Half diffusive -> Half drift
             for (int j = 0; j < n; j++)
             {
-                drift2(walkers[j], 0.15, dt / 2);
+                drift2(walkers[j], ALPHA, dt / 2);
             }
             diffusive_part(walkers, n, dt / 2, r);
             walkers = reactive_part(walkers, &n, dt, E_t, r);
             diffusive_part(walkers, n, dt / 2, r);
             for (int j = 0; j < n; j++)
             {
-                drift2(walkers[j], 0.15, dt / 2);
+                drift2(walkers[j], ALPHA, dt / 2);
             }
         }
         
@@ -506,7 +509,7 @@ double** reactive_part(double** walkers, int* n_ptr, double dt, double E_t, gsl_
 
     for (int j = 0; j < n; j++)
     {
-        double E_l = get_E_l(walkers[j], 0.15);
+        double E_l = get_E_l(walkers[j], ALPHA);
         double w = exp(- (E_l - E_t) * dt);
         int m = (int) (w  + gsl_rng_uniform(r));
         walker_multiplier[j] = m;
