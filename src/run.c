@@ -11,6 +11,7 @@
 typedef struct {
     double* walkers; 
     int n;
+    double mean_E_t;
 } result_dmc;
 
 typedef struct {
@@ -22,12 +23,13 @@ void task1(void);
 void task2(void);
 void task3(void);
 void task3b(void);
+void task4(void);
 gsl_rng* get_rand(void);
 double displace_x(double x, double delta_tau, gsl_rng* r);
 double weight_1d(double x, double E_t, double dt);
 double update_E_t(double E_t, double gamma, int n, int n0);
 void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
-void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int decomposition, int task);
+result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int decomposition, int task, bool print);
 double** init_walkers_6d(int n);
 void diffusion_monte_carlo_task2(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq);
 double** polar_to_cart(double** polar, int n);
@@ -47,8 +49,9 @@ run(
 {
     //task1();
     //task2();
-    //task3();
-    task3b();
+    task3();
+    //task3b();
+    //task4();
     return 0;
 }
 
@@ -89,7 +92,7 @@ void task3(void)
     double gamma = 0.5;
     int n_iter = 50000;
     int n_eq = 1500;
-    diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 1, 3);
+    diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 1, 3, true);
 }
 
 void task3b(void)
@@ -103,7 +106,30 @@ void task3b(void)
     double gamma = 0.5;
     int n_iter = 5000;
     int n_eq = 1500;
-    diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 2, 4);   
+    diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 2, 4, true);   
+}
+
+void task4(void)
+{
+    int n = 1000;
+    double gamma = 0.5;
+    int n_iter = 25000;
+    int n_eq = 1500;
+    double E_t = - 3;
+    int n_runs = 25;
+    double* dts = linspace(0.01, 0.4, n_runs, true);
+    FILE* file = fopen("data/task5.csv", "w+");
+
+    for (int i = 0; i < n_runs; i++)
+    {   
+        printf("dt: %.3lf\n", dts[i]);
+        double** walkers = init_walkers_6d(n);
+        result_dmc result1 = diffusion_monte_carlo_6d(polar_to_cart(walkers, n), n, E_t, gamma, dts[i], n_iter, n_eq, 1, 5, false);  
+        result_dmc result2 = diffusion_monte_carlo_6d(polar_to_cart(walkers, n), n, E_t, gamma, dts[i], n_iter, n_eq, 2, 5, false);  
+        destroy_2D_array(walkers);
+        fprintf(file, "%lf, %lf\n", result1.mean_E_t, result2.mean_E_t);
+    }
+    fclose(file);
 }
 
 void diffusion_monte_carlo_1d(double* walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq)
@@ -247,7 +273,7 @@ void diffusion_monte_carlo_task2(double** walkers, int n0, double E_t, double ga
     fclose(file);
 }
 
-void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int decomposition, int task)
+result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma, double dt, int n_iter, int n_eq, int decomposition, int task, bool print)
 {
     gsl_rng* r = get_rand();
     int n = n0;
@@ -256,17 +282,25 @@ void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma
     char buffer2[50];
     sprintf(buffer1, "data/task%d.csv", task);
     sprintf(buffer2, "data/positions_task%d.csv", task);
-    FILE* file = fopen(buffer1, "w+");
-    FILE* positions = fopen(buffer2, "w+");
+    FILE* file; 
+    FILE* positions;
+    if (print)
+    {
+        file = fopen(buffer1, "w+");
+        positions = fopen(buffer2, "w+");
+    }
     int denominator = 0;
 
     for (int i = 0; i < n_iter; i++)
     { // For every DMC iteration
-        for (int j = 0; j < n; j++)
+        if (print)
         {
-            fprintf(positions, "%lf, %lf\n", radius(walkers[j]), radius(walkers[j] + 3));
+            for (int j = 0; j < n; j++)
+            {
+                fprintf(positions, "%lf, %lf\n", radius(walkers[j]), radius(walkers[j] + 3));
+            }
+            fprintf(file, "%d, %lf\n", n, E_t);
         }
-        fprintf(file, "%d, %lf\n", n, E_t);
 
         if (decomposition == 1) // Basic decomposition.
         { // Reactive part -> Diffusive part -> Drift
@@ -303,8 +337,14 @@ void diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double gamma
         E_t = update_E_t(E_t_sum / denominator, gamma, n, n0);
     }
     destroy_2D_array(walkers);
-    fclose(file);
-    fclose(positions);
+    if (print)
+    {
+        fclose(file);
+        fclose(positions);
+    }
+    result_dmc result;
+    result.mean_E_t = E_t_sum / denominator;
+    return result;
 }
 
 double** polar_to_cart(double** polar, int n)
@@ -469,7 +509,6 @@ double** reactive_part(double** walkers, int* n_ptr, double dt, double E_t, gsl_
         double E_l = get_E_l(walkers[j], 0.15);
         double w = exp(- (E_l - E_t) * dt);
         int m = (int) (w  + gsl_rng_uniform(r));
-        //printf("%d, %lf\n", m, w);
         walker_multiplier[j] = m;
         multiplier_sum += m;
     }
