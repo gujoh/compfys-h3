@@ -49,9 +49,9 @@ run(
     char *argv[]
    )
 {
-    //task1();
-    //task2();
-    //task3();
+    task1();
+    task2();
+    task3();
     task3b();
     //task4();
     return 0;
@@ -65,7 +65,7 @@ void task1(void)
     double delta_tau = 0.02;
     double gamma = 0.5;
     int n_iter = 50000;
-    int n_eq = 1500;
+    int n_eq = 1000;
     diffusion_monte_carlo_1d(walkers, n, E_t, gamma, delta_tau, n_iter, n_eq);
 }
 
@@ -78,8 +78,8 @@ void task2(void)
     double E_t = - 3;
     double delta_tau = 0.01;
     double gamma = 0.5;
-    int n_iter = 1000000;
-    int n_eq = 1500;
+    int n_iter = 50000;
+    int n_eq = 1000;
     diffusion_monte_carlo_task2(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq);
 }
 
@@ -92,8 +92,8 @@ void task3(void)
     double E_t = - 3;
     double delta_tau = 0.1;
     double gamma = 0.5;
-    int n_iter = 25000;
-    int n_eq = 1500;
+    int n_iter = 50000;
+    int n_eq = 1000;
     diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 1, 3, true);
 }
 
@@ -104,10 +104,10 @@ void task3b(void)
     double** walkers_cartesian = polar_to_cart(walkers, n);
     destroy_2D_array(walkers);
     double E_t = - 3;
-    double delta_tau = 0.01;
+    double delta_tau = 0.1;
     double gamma = 0.5;
-    int n_iter = 20000;
-    int n_eq = 1500;
+    int n_iter = 50000;
+    int n_eq = 1000;
     diffusion_monte_carlo_6d(walkers_cartesian, n, E_t, gamma, delta_tau, n_iter, n_eq, 2, 4, true);   
 }
 
@@ -115,8 +115,8 @@ void task4(void)
 {
     int n = 1000;
     double gamma = 0.5;
-    int t = 2000;
-    int n_eq = 1500;
+    int t = 5000;
+    int n_eq = 1000;
     double E_t = - 3;
     int n_runs = 20;
     double* dts = linspace(0.01, 0.4, n_runs, true);
@@ -306,7 +306,7 @@ result_dmc diffusion_monte_carlo_6d(double** walkers, int n0, double E_t, double
         }
 
         if (decomposition == 1) // Basic decomposition.
-        { // Reactive part -> Diffusive part -> Drift
+        { // Drift -> Diffusive part -> Reactive part
             for (int j = 0; j < n; j++)
             {
                 first_order_drift_6d(walkers[j], ALPHA, dt);
@@ -408,7 +408,7 @@ void v_F(double* v, double* walker, double alpha)
 
     // r_12/|r_12|
     double r12_norm[3];
-    elementwise_subtraction(r12_norm, r1, r2, 3);
+    elementwise_subtraction(r12_norm, r2, r1, 3);
     normalize_vector(r12_norm, 3);
 
     // |r_12|
@@ -426,7 +426,6 @@ void v_F(double* v, double* walker, double alpha)
 
 void first_order_drift_6d(double* walker, double alpha, double dt)
 {
-    
     int dim = 6;
     double v[] = {0., 0., 0., 0., 0., 0.};
     v_F(v, walker, alpha);
@@ -450,14 +449,14 @@ void second_order_drift_6d(double* walker, double alpha, double dt)
     v_F(v, walker, alpha);
     for(int i = 0; i < dim; i++)
     {
-        tmp_walker[i] += v[i]*(dt/2);
+        tmp_walker[i] += v[i] * (dt / 2);
     }
 
     // R(dt)
     v_F(v, tmp_walker, alpha);
     for(int i = 0; i < dim; i++)
     {
-        walker[i] += v[i]*dt;
+        walker[i] += v[i] * dt;
     }    
 }
 
@@ -578,7 +577,6 @@ double** reactive_part(double** walkers, int* n_ptr, double dt, double E_t, gsl_
     free(walker_multiplier);
     destroy_2D_array(new_walkers);
     *n_ptr = multiplier_sum;
-    //printf("%d\n", multiplier_sum);
     return walkers;
 }
 
