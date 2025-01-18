@@ -373,7 +373,7 @@ double displace_x(double x, double delta_tau, gsl_rng* r)
     return x + sqrt(delta_tau) * G;
 }
 
-double potential_1d(double x)
+double morse_potential(double x)
 {
     double y = 1 - exp(- x);
     return 0.5 * y * y;
@@ -381,7 +381,7 @@ double potential_1d(double x)
 
 double weight_1d(double x, double E_t, double dt)
 {
-    return exp(- (potential_1d(x) - E_t) * dt);
+    return exp(-(morse_potential(x) - E_t) * dt);
 } 
 
 double hamiltonian_potential(double* walker)
@@ -406,7 +406,7 @@ void v_F(double* v, double* walker, double alpha)
     normalize_vector(r1_norm, 3);
     normalize_vector(r2_norm, 3);
 
-    // r_12/|r_12|
+    // r_12/|r_12|, r12 = r_2 - r_1
     double r12_norm[3];
     elementwise_subtraction(r12_norm, r2, r1, 3);
     normalize_vector(r12_norm, 3);
