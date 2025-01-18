@@ -4,8 +4,8 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt
 plt.rcParams['figure.dpi'] = 200
 
-data = np.genfromtxt("../data/task1.csv", delimiter=",")
-positions = np.genfromtxt("../data/positions_task1.csv", delimiter=",")
+data = np.genfromtxt("data/task1.csv", delimiter=",")
+positions = np.genfromtxt("data/positions_task1.csv", delimiter=",")
 dt = 0.02
 t = np.arange(data.shape[0]) * dt
 

@@ -5,8 +5,7 @@ import numpy.typing as npt
 import matplotlib.pyplot as plt
 plt.rcParams['figure.dpi'] = 200
 
-data = np.genfromtxt("../data/task4.csv", delimiter=",")
-positions = np.genfromtxt("../data/positions_task4.csv", delimiter=",")
+data = np.genfromtxt("data/task4.csv", delimiter=",")
 dt = 0.1
 t = np.arange(data.shape[0]) * dt
 
@@ -25,17 +24,5 @@ plt.ylabel("$E_H$")
 plt.xlabel(r"Time ($\tau$)")
 plt.legend()
 plt.show()
-
-x = np.linspace(-5, 20, 1000)
-y = np.exp(- np.exp(- x) - x / 2) / np.sqrt(np.pi)
-plt.hist(positions.reshape(-1, 1), bins=50, density=True, edgecolor="black", alpha=0.7, label="Experimental result")
-#plt.plot(x, y, linewidth=3, label="Analytical result")
-plt.xlabel("x [$a_0$]")
-plt.ylabel(r"$\Psi$(x)")
-plt.legend()
-plt.show()
-
-# print(positions[np.abs(positions) < 0.00000001].shape)
-# print(np.min(np.abs(positions)))
 
 
