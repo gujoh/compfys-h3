@@ -49,11 +49,11 @@ run(
     char *argv[]
    )
 {
-    task1();
-    task2();
-    task3();
-    task3b();
-    //task4();
+    //task1();
+    //task2();
+    //task3();
+    //task3b();
+    task4();
     return 0;
 }
 

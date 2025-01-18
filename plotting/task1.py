@@ -1,4 +1,3 @@
-# Imports
 import numpy as np
 import numpy.typing as npt
 import matplotlib.pyplot as plt
@@ -27,14 +26,10 @@ plt.show()
 
 x = np.linspace(-5, 20, 1000)
 y = np.exp(- np.exp(- x) - x / 2) / np.sqrt(np.pi)
-plt.hist(positions[5000:], bins=50, density=True, edgecolor="black", alpha=0.7, label="Experimental result")
-plt.plot(x, y, linewidth=3, label="Analytical result")
+plt.hist(positions[5000:], bins=70, density=True, edgecolor="black", alpha=0.7, label="Density function of walker positions.")
+plt.plot(x, y, linewidth=3, label=r"$\Phi_0(x) / \sqrt{2\pi}$")
 plt.xlabel("x [$a_0$]")
 plt.ylabel(r"$\Psi$(x)")
 plt.legend()
 plt.show()
-
-print(positions[np.abs(positions) < 0.00000001].shape)
-print(np.min(np.abs(positions)))
-
 
