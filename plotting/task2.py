@@ -9,6 +9,7 @@ t = np.arange(data.shape[0]) * dt
 
 plt.plot(t, data[:, 0])
 mean_walkers = np.mean(data[5000:, 0])
+print(f'Standard deviation, number of walkers: {np.std(data[5000:,0])}')
 plt.plot(t, np.zeros(data.shape[0]) + mean_walkers, "--", label=f"Mean number of walkers = {mean_walkers:.1f}")
 plt.legend()
 plt.ylabel("Number of walkers")
@@ -17,6 +18,7 @@ plt.show()
 
 plt.plot(t, data[:, 1], label="$E_T$")
 mean_e = np.mean(data[5000:, 1])
+print(f'Standard deviation, reference energy: {np.std(data[5000:,1])}')
 plt.plot(t, np.zeros(data.shape[0]) + mean_e, "--", label=f"Mean $E_T$ = {mean_e:.3f}")
 plt.ylabel("$E_H$")
 plt.xlabel(r"Time ($\tau$)")
